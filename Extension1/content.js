@@ -5,24 +5,24 @@ floatingButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" h
 floatingButton.id = 'floating-calculator-btn';
 floatingButton.title = 'Open Calculator';
 Object.assign(floatingButton.style, {
-  position: 'fixed',
-  bottom: '20px',
-  right: '20px',
-  width: '56px',
-  height: '56px',
-  borderRadius: '50%',
-  backgroundColor: '#2563eb', // blue
-  color: 'white',
-  border: 'none',
-  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-  cursor: 'pointer',
-  zIndex: '2147483647',
-  fontSize: '28px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  transition: 'transform 0.2s, background-color 0.2s',
-  padding: '0'
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    backgroundColor: '#2563eb', // blue
+    color: 'white',
+    border: 'none',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
+    cursor: 'pointer',
+    zIndex: '2147483647',
+    fontSize: '28px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'transform 0.2s, background-color 0.2s',
+    padding: '0'
 });
 
 floatingButton.onmouseenter = () => { floatingButton.style.transform = 'scale(1.05)'; };
@@ -129,7 +129,7 @@ Object.assign(navPanel.style, {
 const buttonsData = [
     { text: 'Calculator', color: '#10b981' }, // green
     { text: 'Tetris', color: '#f59e0b' }, // yellow
-    { text: 'Placeholder 3', color: '#3b82f6' }, // blue
+    { text: 'My URLs', color: '#3b82f6' }, // blue
     { text: 'Placeholder 4', color: '#8b5cf6' }, // purple
     { text: 'Placeholder 5', color: '#ec4899' }  // pink
 ];
@@ -151,7 +151,7 @@ buttonsData.forEach(data => {
     });
     btn.onmouseenter = () => { btn.style.transform = 'scale(1.02)'; };
     btn.onmouseleave = () => { btn.style.transform = 'scale(1)'; };
-    
+
     if (data.text === 'Calculator') {
         btn.addEventListener('click', () => {
             navPanel.style.display = 'none';
@@ -162,10 +162,45 @@ buttonsData.forEach(data => {
             navPanel.style.display = 'none';
             tetrisHost.style.display = 'block';
         });
+    } else if (data.text === 'My URLs') {
+        btn.addEventListener('click', () => {
+            navPanel.style.display = 'none';
+            urlsHost.style.display = 'block';
+        });
     }
-    
+
     navPanel.appendChild(btn);
 });
+
+// --- TETRIS AUDIO ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, type, duration, vol = 0.05) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+const tetrisSounds = {
+    move: () => playTone(300, 'square', 0.1, 0.02),
+    rotate: () => playTone(400, 'square', 0.1, 0.02),
+    fall: () => playTone(250, 'square', 0.05, 0.01),
+    lock: () => playTone(150, 'square', 0.15, 0.05),
+    clear: () => {
+        playTone(800, 'square', 0.1, 0.05);
+        setTimeout(() => playTone(1200, 'square', 0.15, 0.05), 100);
+    },
+    gameover: () => {
+        playTone(200, 'sawtooth', 0.3, 0.05);
+        setTimeout(() => playTone(150, 'sawtooth', 0.4, 0.05), 300);
+    }
+};
 
 // --- TETRIS LOGIC ---
 const tetrisHost = document.createElement('div');
@@ -199,7 +234,7 @@ tCtx.scale(40, 40);
 const arena = [];
 while (arena.length < 17) arena.push(new Array(10).fill(0));
 
-const player = { pos: {x:0, y:0}, matrix: null, score: 0 };
+const player = { pos: { x: 0, y: 0 }, matrix: null, score: 0 };
 const colors = [null, '#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 function drawMatrix(matrix, offset) {
@@ -233,6 +268,7 @@ function merge(arena, player) {
 
 function arenaSweep() {
     let rowCount = 1;
+    let linesCleared = false;
     outer: for (let y = arena.length - 1; y > 0; --y) {
         for (let x = 0; x < arena[y].length; ++x) {
             if (arena[y][x] === 0) continue outer;
@@ -242,7 +278,9 @@ function arenaSweep() {
         ++y;
         player.score += rowCount * 10;
         rowCount *= 2;
+        linesCleared = true;
     }
+    if (linesCleared) tetrisSounds.clear();
     tetrisRoot.getElementById('score-val').innerText = player.score;
 }
 
@@ -251,34 +289,53 @@ function playerDrop() {
     if (collide(arena, player)) {
         player.pos.y--;
         merge(arena, player);
+        tetrisSounds.lock();
         playerReset();
         arenaSweep();
+    } else {
+        tetrisSounds.fall();
     }
+    dropCounter = 0;
+}
+
+function playerHardDrop() {
+    while (!collide(arena, player)) {
+        player.pos.y++;
+    }
+    player.pos.y--;
+    merge(arena, player);
+    tetrisSounds.lock();
+    playerReset();
+    arenaSweep();
     dropCounter = 0;
 }
 
 function playerMove(dir) {
     player.pos.x += dir;
-    if (collide(arena, player)) player.pos.x -= dir;
+    if (collide(arena, player)) {
+        player.pos.x -= dir;
+    } else {
+        tetrisSounds.move();
+    }
 }
 
 function playerRotate(dir) {
     const pos = player.pos.x;
     let offset = 1;
-    for(let y=0; y<player.matrix.length; ++y) {
-        for(let x=0; x<y; ++x) {
+    for (let y = 0; y < player.matrix.length; ++y) {
+        for (let x = 0; x < y; ++x) {
             [player.matrix[x][y], player.matrix[y][x]] = [player.matrix[y][x], player.matrix[x][y]];
         }
     }
     if (dir > 0) player.matrix.forEach(row => row.reverse());
     else player.matrix.reverse();
-    
-    while(collide(arena, player)) {
+
+    while (collide(arena, player)) {
         player.pos.x += offset;
         offset = -(offset + (offset > 0 ? 1 : -1));
         if (offset > player.matrix[0].length) {
-            for(let y=0; y<player.matrix.length; ++y) {
-                for(let x=0; x<y; ++x) {
+            for (let y = 0; y < player.matrix.length; ++y) {
+                for (let x = 0; x < y; ++x) {
                     [player.matrix[x][y], player.matrix[y][x]] = [player.matrix[y][x], player.matrix[x][y]];
                 }
             }
@@ -288,16 +345,17 @@ function playerRotate(dir) {
             return;
         }
     }
+    tetrisSounds.rotate();
 }
 
 function createPiece(type) {
-    if (type === 'T') return [[0,0,0],[1,1,1],[0,1,0]];
-    if (type === 'O') return [[2,2],[2,2]];
-    if (type === 'L') return [[0,3,0],[0,3,0],[0,3,3]];
-    if (type === 'J') return [[0,4,0],[0,4,0],[4,4,0]];
-    if (type === 'I') return [[0,5,0,0],[0,5,0,0],[0,5,0,0],[0,5,0,0]];
-    if (type === 'S') return [[0,6,6],[6,6,0],[0,0,0]];
-    if (type === 'Z') return [[7,7,0],[0,7,7],[0,0,0]];
+    if (type === 'T') return [[0, 0, 0], [1, 1, 1], [0, 1, 0]];
+    if (type === 'O') return [[2, 2], [2, 2]];
+    if (type === 'L') return [[0, 3, 0], [0, 3, 0], [0, 3, 3]];
+    if (type === 'J') return [[0, 4, 0], [0, 4, 0], [4, 4, 0]];
+    if (type === 'I') return [[0, 5, 0, 0], [0, 5, 0, 0], [0, 5, 0, 0], [0, 5, 0, 0]];
+    if (type === 'S') return [[0, 6, 6], [6, 6, 0], [0, 0, 0]];
+    if (type === 'Z') return [[7, 7, 0], [0, 7, 7], [0, 0, 0]];
 }
 
 function playerReset() {
@@ -306,6 +364,7 @@ function playerReset() {
     player.pos.y = 0;
     player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
     if (collide(arena, player)) {
+        tetrisSounds.gameover();
         arena.forEach(row => row.fill(0));
         player.score = 0;
         tetrisRoot.getElementById('score-val').innerText = player.score;
@@ -315,7 +374,7 @@ function playerReset() {
 function draw() {
     tCtx.fillStyle = '#1e293b';
     tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
-    drawMatrix(arena, {x:0, y:0});
+    drawMatrix(arena, { x: 0, y: 0 });
     drawMatrix(player.matrix, player.pos);
 }
 
@@ -337,10 +396,159 @@ function tetrisUpdate(time = 0) {
 playerReset();
 tetrisUpdate();
 
+// --- MY URLS PANEL ---
+const urlsHost = document.createElement('div');
+urlsHost.id = 'floating-urls-host';
+Object.assign(urlsHost.style, {
+    position: 'fixed', bottom: '90px', right: '20px', width: '768px', height: '576px',
+    zIndex: '2147483647', display: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+    borderRadius: '16px', overflow: 'hidden', backgroundColor: '#f8fafc'
+});
+const urlsRoot = urlsHost.attachShadow({ mode: 'open' });
+
+urlsRoot.innerHTML = `
+<style>
+    :host { display:block; width:100%; height:100%; background:#f8fafc; color:#1e293b; font-family: Verdana, sans-serif; box-sizing: border-box; }
+    * { box-sizing: inherit; }
+    .header { padding: 10px; display: flex; justify-content: flex-end; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+    .header label { font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: calc(100% - 41px); }
+    .quadrant { padding: 16px; display: flex; flex-direction: column; overflow-y: auto; }
+    .q-daily { background-color: #dcfce7; } /* pastel green */
+    .q-media { background-color: #fce7f3; } /* pastel pink */
+    .q-financial { background-color: #e0f2fe; } /* pastel blue */
+    .q-fun { background-color: #fef08a; } /* pastel yellow */
+    .title { font-family: Verdana, sans-serif; font-size: 14px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 20px; }
+    .url-list { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+    
+    /* Display Mode */
+    .display-link { font-family: Verdana, sans-serif; font-size: 10px; color: #2563eb; text-decoration: none; word-break: break-all; }
+    .display-link:hover { text-decoration: underline; }
+    
+    /* Edit Mode */
+    .edit-row { display: flex; gap: 8px; align-items: center; }
+    .edit-input { font-family: Verdana, sans-serif; font-size: 10px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; flex-grow: 1; }
+    .btn-add { align-self: center; margin-top: 10px; padding: 4px 12px; font-size: 12px; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 4px; }
+    .btn-add:hover { background: #2563eb; }
+</style>
+<div class="header">
+    <label>
+        <input type="checkbox" id="mode-toggle"> Edit Mode
+    </label>
+</div>
+<div class="grid">
+    <div class="quadrant q-daily">
+        <h2 class="title">Daily</h2>
+        <div class="url-list" id="list-Daily"></div>
+        <button class="btn-add" id="add-Daily" style="display:none;">Add</button>
+    </div>
+    <div class="quadrant q-media">
+        <h2 class="title">Media</h2>
+        <div class="url-list" id="list-Media"></div>
+        <button class="btn-add" id="add-Media" style="display:none;">Add</button>
+    </div>
+    <div class="quadrant q-financial">
+        <h2 class="title">Financial</h2>
+        <div class="url-list" id="list-Financial"></div>
+        <button class="btn-add" id="add-Financial" style="display:none;">Add</button>
+    </div>
+    <div class="quadrant q-fun">
+        <h2 class="title">Fun</h2>
+        <div class="url-list" id="list-Fun"></div>
+        <button class="btn-add" id="add-Fun" style="display:none;">Add</button>
+    </div>
+</div>
+`;
+
+let myUrlsData = {
+    Daily: [{ name: 'Sample', url: 'https://example.com' }],
+    Media: [{ name: 'Sample', url: 'https://example.com' }],
+    Financial: [{ name: 'Sample', url: 'https://example.com' }],
+    Fun: [{ name: 'Sample', url: 'https://example.com' }]
+};
+
+let isEditMode = false;
+
+function saveUrls() {
+    chrome.storage.local.set({ myUrlsData });
+}
+
+function renderUrls() {
+    const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
+
+    quadrants.forEach(quad => {
+        const listDiv = urlsRoot.getElementById('list-' + quad);
+        const addBtn = urlsRoot.getElementById('add-' + quad);
+        listDiv.innerHTML = '';
+        addBtn.style.display = isEditMode ? 'block' : 'none';
+
+        myUrlsData[quad].forEach((item, index) => {
+            if (isEditMode) {
+                const row = document.createElement('div');
+                row.className = 'edit-row';
+
+                const nameInput = document.createElement('input');
+                nameInput.className = 'edit-input';
+                nameInput.value = item.name;
+                nameInput.placeholder = 'Display Name';
+                nameInput.onchange = (e) => { myUrlsData[quad][index].name = e.target.value; saveUrls(); };
+
+                const urlInput = document.createElement('input');
+                urlInput.className = 'edit-input';
+                urlInput.value = item.url;
+                urlInput.placeholder = 'URL';
+                urlInput.onchange = (e) => { myUrlsData[quad][index].url = e.target.value; saveUrls(); };
+
+                row.appendChild(nameInput);
+                row.appendChild(urlInput);
+                listDiv.appendChild(row);
+            } else {
+                if (item.name || item.url) {
+                    const link = document.createElement('a');
+                    link.className = 'display-link';
+                    // Auto-prefix with http:// if missing so the link actually navigates properly
+                    link.href = (item.url && !item.url.startsWith('http')) ? 'https://' + item.url : item.url;
+                    link.target = '_blank';
+                    link.innerText = item.name || item.url;
+                    listDiv.appendChild(link);
+                }
+            }
+        });
+    });
+
+    const modeToggle = urlsRoot.getElementById('mode-toggle');
+    modeToggle.checked = isEditMode;
+}
+
+// Load from storage
+chrome.storage.local.get(['myUrlsData'], (result) => {
+    if (result.myUrlsData) {
+        myUrlsData = result.myUrlsData;
+    }
+    renderUrls();
+});
+
+// Mode Toggle
+const modeToggle = urlsRoot.getElementById('mode-toggle');
+modeToggle.addEventListener('change', (e) => {
+    isEditMode = e.target.checked;
+    renderUrls();
+});
+
+// Add Buttons
+['Daily', 'Media', 'Financial', 'Fun'].forEach(quad => {
+    urlsRoot.getElementById('add-' + quad).addEventListener('click', () => {
+        myUrlsData[quad].push({ name: '', url: '' });
+        saveUrls();
+        renderUrls();
+    });
+});
+
 document.body.appendChild(floatingButton);
 document.body.appendChild(navPanel);
 document.body.appendChild(calcHost);
 document.body.appendChild(tetrisHost);
+document.body.appendChild(urlsHost);
 
 // Toggle visibility
 floatingButton.addEventListener('click', () => {
@@ -439,28 +647,33 @@ document.addEventListener('keydown', (e) => {
             tetrisHost.style.display = 'none';
             navPanel.style.display = 'flex';
             return;
+        } else if (urlsHost.style.display === 'block') {
+            // If urls panel is open, return to nav panel
+            urlsHost.style.display = 'none';
+            navPanel.style.display = 'flex';
+            return;
         } else if (navPanel.style.display === 'flex') {
             // If nav panel is open, close it
             navPanel.style.display = 'none';
             return;
         }
     }
-    
+
     // Tetris Controls
     if (tetrisHost.style.display === 'block') {
         if (e.key === 'ArrowLeft') { playerMove(-1); e.preventDefault(); return; }
         if (e.key === 'ArrowRight') { playerMove(1); e.preventDefault(); return; }
-        if (e.key === 'ArrowDown') { playerDrop(); e.preventDefault(); return; }
+        if (e.key === 'ArrowDown') { playerHardDrop(); e.preventDefault(); return; }
         if (e.key === 'ArrowUp') { playerRotate(1); e.preventDefault(); return; }
         return; // Prevent calculator keys processing if tetris is open
     }
 
     // Only capture keyboard input if the floating calculator is currently visible
     if (calcHost.style.display === 'none') return;
-    
+
     // Prevent default interactions like page scrolling (e.g. from space bar or arrows if mapped)
     // but usually only prevent it for known calculator keys, especially Enter
-    
+
     if (currentOperand === 'Error' && e.key !== 'Escape') {
         clear();
     }
