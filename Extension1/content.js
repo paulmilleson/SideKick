@@ -1,7 +1,11 @@
 // content.js
+// Declare all host panels globally so they are accessible to repositionButtonAndPanels
+let calcHost, navPanel, tetrisHost, urlsHost;
+
 // 1. Create the floating button
 const floatingButton = document.createElement('button');
-floatingButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>`;
+const iconUrl = chrome.runtime.getURL('soccer_kicking_icon.png');
+floatingButton.innerHTML = `<img src="${iconUrl}" style="width: 100%; height: 100%; object-fit: cover; pointer-events: none;" alt="SideKick Icon">`;
 floatingButton.id = 'floating-calculator-btn';
 floatingButton.title = 'Open Calculator';
 Object.assign(floatingButton.style, {
@@ -15,21 +19,96 @@ Object.assign(floatingButton.style, {
     color: 'white',
     border: 'none',
     boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-    cursor: 'pointer',
+    cursor: 'grab',
     zIndex: '2147483647',
     fontSize: '28px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     transition: 'transform 0.2s, background-color 0.2s',
-    padding: '0'
+    padding: '0',
+    overflow: 'hidden'
 });
 
 floatingButton.onmouseenter = () => { floatingButton.style.transform = 'scale(1.05)'; };
 floatingButton.onmouseleave = () => { floatingButton.style.transform = 'scale(1)'; };
 
+// Dragging state variables
+let isDragging = false;
+let hasDragged = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let btnStartX = 0;
+let btnStartY = 0;
+let currentBtnLeft = window.innerWidth - 56 - 20; // Default matching right: 20px
+let currentBtnTop = window.innerHeight - 56 - 20; // Default matching bottom: 20px
+
+function repositionButtonAndPanels(left, top) {
+    const btnWidth = 56;
+    const btnHeight = 56;
+    const padding = 10;
+
+    const minLeft = padding;
+    const maxLeft = window.innerWidth - btnWidth - padding;
+    const minTop = padding;
+    const maxTop = window.innerHeight - btnHeight - padding;
+
+    // Clamp coordinates to keep button inside viewport
+    currentBtnLeft = Math.max(minLeft, Math.min(left, maxLeft));
+    currentBtnTop = Math.max(minTop, Math.min(top, maxTop));
+
+    floatingButton.style.left = `${currentBtnLeft}px`;
+    floatingButton.style.top = `${currentBtnTop}px`;
+    floatingButton.style.bottom = 'auto';
+    floatingButton.style.right = 'auto';
+
+    // Position hosts dynamically relative to the floating button:
+    // navPanel: width 200px, height auto (~250px)
+    // calcHost: width 320px, height 480px
+    // tetrisHost: width 480px, height 820px
+    // urlsHost: width 768px, height 576px
+    const hostsConfig = [
+        { el: navPanel, width: 200, height: 250 },
+        { el: calcHost, width: 320, height: 480 },
+        { el: tetrisHost, width: 480, height: 820 },
+        { el: urlsHost, width: 768, height: 576 }
+    ];
+
+    hostsConfig.forEach(config => {
+        if (!config.el) return;
+
+        // Horizontally: align host's right edge with button's right edge if on the right half,
+        // otherwise align host's left edge with button's left edge.
+        let hostLeft;
+        if (currentBtnLeft + btnWidth / 2 > window.innerWidth / 2) {
+            hostLeft = currentBtnLeft + btnWidth - config.width;
+        } else {
+            hostLeft = currentBtnLeft;
+        }
+
+        // Vertically: show host above button if on bottom half, otherwise show host below button.
+        let hostTop;
+        if (currentBtnTop + btnHeight / 2 > window.innerHeight / 2) {
+            hostTop = currentBtnTop - config.height - 14;
+        } else {
+            hostTop = currentBtnTop + btnHeight + 14;
+        }
+
+        // Keep hosts within viewport bounds
+        hostLeft = Math.max(padding, Math.min(hostLeft, window.innerWidth - config.width - padding));
+        hostTop = Math.max(padding, Math.min(hostTop, window.innerHeight - config.height - padding));
+
+        Object.assign(config.el.style, {
+            left: `${hostLeft}px`,
+            top: `${hostTop}px`,
+            bottom: 'auto',
+            right: 'auto'
+        });
+    });
+}
+
 // 2. Create the container with Shadow DOM for isolation
-const calcHost = document.createElement('div');
+calcHost = document.createElement('div');
 calcHost.id = 'floating-calculator-host';
 Object.assign(calcHost.style, {
     position: 'fixed',
@@ -112,7 +191,7 @@ shadowRoot.innerHTML = `
 `;
 
 // Nav Panel
-const navPanel = document.createElement('div');
+navPanel = document.createElement('div');
 navPanel.id = 'floating-nav-panel';
 Object.assign(navPanel.style, {
     position: 'fixed',
@@ -203,7 +282,7 @@ const tetrisSounds = {
 };
 
 // --- TETRIS LOGIC ---
-const tetrisHost = document.createElement('div');
+tetrisHost = document.createElement('div');
 tetrisHost.id = 'floating-tetris-host';
 Object.assign(tetrisHost.style, {
     position: 'fixed', bottom: '90px', right: '20px', width: '480px', height: '820px',
@@ -397,7 +476,7 @@ playerReset();
 tetrisUpdate();
 
 // --- MY URLS PANEL ---
-const urlsHost = document.createElement('div');
+urlsHost = document.createElement('div');
 urlsHost.id = 'floating-urls-host';
 Object.assign(urlsHost.style, {
     position: 'fixed', bottom: '90px', right: '20px', width: '768px', height: '576px',
@@ -552,6 +631,11 @@ document.body.appendChild(urlsHost);
 
 // Toggle visibility
 floatingButton.addEventListener('click', () => {
+    // If the button was dragged, ignore the click event and reset flag
+    if (hasDragged) {
+        hasDragged = false;
+        return;
+    }
     if (calcHost.style.display === 'block') {
         calcHost.style.display = 'none';
         navPanel.style.display = 'flex';
@@ -563,6 +647,52 @@ floatingButton.addEventListener('click', () => {
         }
     }
 });
+
+// Dragging Logic
+floatingButton.addEventListener('mousedown', (e) => {
+    // Only allow dragging with left-click
+    if (e.button !== 0) return;
+
+    isDragging = true;
+    hasDragged = false;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+
+    const rect = floatingButton.getBoundingClientRect();
+    btnStartX = rect.left;
+    btnStartY = rect.top;
+
+    floatingButton.style.cursor = 'grabbing';
+    e.preventDefault(); // Prevents cursor text/highlighting issues
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        hasDragged = true;
+    }
+
+    repositionButtonAndPanels(btnStartX + dx, btnStartY + dy);
+});
+
+window.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        floatingButton.style.cursor = 'grab';
+    }
+});
+
+// Window Resize Handling
+window.addEventListener('resize', () => {
+    repositionButtonAndPanels(currentBtnLeft, currentBtnTop);
+});
+
+// Initialize position using top/left coordinates
+repositionButtonAndPanels(currentBtnLeft, currentBtnTop);
 
 // Calculator Logic inside Shadow DOM
 const currentDisplay = shadowRoot.getElementById('current');

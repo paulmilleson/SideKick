@@ -19,5 +19,15 @@
         "content.js"
       ]
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "soccer_kicking_icon.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }
