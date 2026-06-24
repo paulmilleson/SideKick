@@ -493,9 +493,9 @@ urlsRoot.innerHTML = `
     .header label { font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: calc(100% - 41px); }
     .quadrant { padding: 16px; display: flex; flex-direction: column; overflow-y: auto; }
-    .q-daily { background-color: #dcfce7; } /* pastel green */
+    .q-daily { background-color: #bbf7d0; } /* pastel green (darkened) */
     .q-media { background-color: #fce7f3; } /* pastel pink */
-    .q-financial { background-color: #e0f2fe; } /* pastel blue */
+    .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
     .q-fun { background-color: #fef08a; } /* pastel yellow */
     .title { font-family: Verdana, sans-serif; font-size: 14px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 20px; }
     .url-list { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
