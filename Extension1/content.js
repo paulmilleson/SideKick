@@ -209,8 +209,8 @@ const buttonsData = [
     { text: 'Calculator', color: '#10b981' }, // green
     { text: 'Tetris', color: '#f59e0b' }, // yellow
     { text: 'My URLs', color: '#3b82f6' }, // blue
-    { text: 'Placeholder 4', color: '#8b5cf6' }, // purple
-    { text: 'Placeholder 5', color: '#ec4899' }  // pink
+    { text: 'My Notes', color: '#8b5cf6' }, // purple
+    { text: 'My Things To Do', color: '#ec4899' }  // pink
 ];
 
 buttonsData.forEach(data => {
