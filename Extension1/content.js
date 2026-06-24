@@ -763,6 +763,21 @@ keypad.addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+    // Global shortcut: Alt + S or Ctrl + Shift + S to toggle the floating button itself
+    if ((e.altKey && e.key.toLowerCase() === 's') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's')) {
+        e.preventDefault();
+        if (floatingButton.style.display !== 'none') {
+            floatingButton.style.display = 'none';
+            calcHost.style.display = 'none';
+            navPanel.style.display = 'none';
+            tetrisHost.style.display = 'none';
+            urlsHost.style.display = 'none';
+        } else {
+            floatingButton.style.display = 'flex';
+        }
+        return;
+    }
+
     // Escape tiered shutdown logic
     if (e.key === 'Escape') {
         if (calcHost.style.display === 'block') {
@@ -785,6 +800,14 @@ document.addEventListener('keydown', (e) => {
         } else if (navPanel.style.display === 'flex') {
             // If nav panel is open, close it
             navPanel.style.display = 'none';
+            return;
+        } else {
+            // If all panels are closed, pressing Escape hides/shows the floating icon
+            if (floatingButton.style.display !== 'none') {
+                floatingButton.style.display = 'none';
+            } else {
+                floatingButton.style.display = 'flex';
+            }
             return;
         }
     }
