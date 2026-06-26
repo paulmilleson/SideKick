@@ -487,28 +487,159 @@ const urlsRoot = urlsHost.attachShadow({ mode: 'open' });
 
 urlsRoot.innerHTML = `
 <style>
-    :host { display:block; width:100%; height:100%; background:#f8fafc; color:#1e293b; font-family: Verdana, sans-serif; box-sizing: border-box; }
+    :host { display:block; width:100%; height:100%; background:#f8fafc; color:#1e293b; font-family: Verdana, sans-serif; box-sizing: border-box; position: relative; }
     * { box-sizing: inherit; }
     .header { padding: 10px; display: flex; justify-content: flex-end; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
     .header label { font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: calc(100% - 41px); }
-    .quadrant { padding: 16px; display: flex; flex-direction: column; overflow-y: auto; }
+    .quadrant { padding: 10px; display: flex; flex-direction: column; overflow-y: auto; }
     .q-daily { background-color: #bbf7d0; } /* pastel green (darkened) */
     .q-media { background-color: #fce7f3; } /* pastel pink */
     .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
     .q-fun { background-color: #fef08a; } /* pastel yellow */
-    .title { font-family: Verdana, sans-serif; font-size: 14px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 20px; }
-    .url-list { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+    .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; color: #475569; }
     
-    /* Display Mode */
-    .display-link { font-family: Verdana, sans-serif; font-size: 10px; color: #2563eb; text-decoration: none; word-break: break-all; }
-    .display-link:hover { text-decoration: underline; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    td {
+        padding: 4px;
+        vertical-align: middle;
+        font-family: Verdana, sans-serif;
+        font-size: 10px;
+        height: 38px;
+        box-sizing: border-box;
+        position: relative;
+    }
     
-    /* Edit Mode */
-    .edit-row { display: flex; gap: 8px; align-items: center; }
-    .edit-input { font-family: Verdana, sans-serif; font-size: 10px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; flex-grow: 1; }
-    .btn-add { align-self: center; margin-top: 10px; padding: 4px 12px; font-size: 12px; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 4px; }
-    .btn-add:hover { background: #2563eb; }
+    .display-mode td { border: none; }
+    .edit-mode td { border: 1px solid #cbd5e1; }
+
+    /* Display Mode link */
+    .display-link {
+        font-family: Verdana, sans-serif;
+        font-size: 10px;
+        text-decoration: none;
+        word-break: break-all;
+        display: block;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border-radius: 4px;
+    }
+    .display-link:hover { text-decoration: underline; opacity: 0.9; }
+    
+    /* Edit Mode cell container */
+    .edit-cell-container {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        position: relative;
+        padding-right: 14px; /* leave room for palette icon */
+    }
+    
+    .cell-input {
+        font-family: Verdana, sans-serif;
+        font-size: 9px;
+        padding: 2px;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        width: 100%;
+        background: white;
+        color: #1e293b;
+        box-sizing: border-box;
+    }
+    .cell-input:focus {
+        border-color: #3b82f6;
+        outline: none;
+    }
+    
+    .btn-color-picker {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        font-size: 10px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.6;
+        transition: opacity 0.15s;
+    }
+    .btn-color-picker:hover {
+        opacity: 1;
+    }
+
+    /* Google Docs Color Picker Popover */
+    #color-picker-popover {
+        position: absolute;
+        z-index: 100000;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+        padding: 10px;
+        display: none;
+        width: 160px;
+        color: #1e293b;
+        font-family: sans-serif;
+    }
+    .color-picker-section {
+        margin-bottom: 10px;
+    }
+    .color-picker-title {
+        font-size: 9px;
+        font-weight: bold;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .color-grid {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 2px;
+    }
+    .color-box {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        cursor: pointer;
+        border: 1px solid #e2e8f0;
+        box-sizing: border-box;
+    }
+    .color-box:hover {
+        transform: scale(1.2);
+        border-color: #64748b;
+        z-index: 1;
+    }
+    .popover-footer {
+        border-top: 1px solid #e2e8f0;
+        padding-top: 8px;
+        display: flex;
+        gap: 4px;
+    }
+    .btn-popover {
+        flex: 1;
+        padding: 4px;
+        font-size: 8px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .btn-popover:hover {
+        background: #e2e8f0;
+    }
 </style>
 <div class="header">
     <label>
@@ -518,32 +649,48 @@ urlsRoot.innerHTML = `
 <div class="grid">
     <div class="quadrant q-daily">
         <h2 class="title">Daily</h2>
-        <div class="url-list" id="list-Daily"></div>
-        <button class="btn-add" id="add-Daily" style="display:none;">Add</button>
+        <div id="list-Daily"></div>
     </div>
     <div class="quadrant q-media">
         <h2 class="title">Media</h2>
-        <div class="url-list" id="list-Media"></div>
-        <button class="btn-add" id="add-Media" style="display:none;">Add</button>
+        <div id="list-Media"></div>
     </div>
     <div class="quadrant q-financial">
         <h2 class="title">Financial</h2>
-        <div class="url-list" id="list-Financial"></div>
-        <button class="btn-add" id="add-Financial" style="display:none;">Add</button>
+        <div id="list-Financial"></div>
     </div>
     <div class="quadrant q-fun">
         <h2 class="title">Fun</h2>
-        <div class="url-list" id="list-Fun"></div>
-        <button class="btn-add" id="add-Fun" style="display:none;">Add</button>
+        <div id="list-Fun"></div>
+    </div>
+</div>
+
+<!-- Custom Google Docs Style Color Picker Popover -->
+<div id="color-picker-popover">
+    <div class="color-picker-section">
+        <div class="color-picker-title">
+            <span>A</span> Text Color
+        </div>
+        <div class="color-grid" id="text-color-grid"></div>
+    </div>
+    <div class="color-picker-section">
+        <div class="color-picker-title">
+            <span>✏️</span> Highlight Color
+        </div>
+        <div class="color-grid" id="bg-color-grid"></div>
+    </div>
+    <div class="popover-footer">
+        <button class="btn-popover" id="btn-reset-cell">Reset Colors</button>
+        <button class="btn-popover" id="btn-close-popover">Close</button>
     </div>
 </div>
 `;
 
 let myUrlsData = {
-    Daily: [{ name: 'Sample', url: 'https://example.com' }],
-    Media: [{ name: 'Sample', url: 'https://example.com' }],
-    Financial: [{ name: 'Sample', url: 'https://example.com' }],
-    Fun: [{ name: 'Sample', url: 'https://example.com' }]
+    Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' })),
+    Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' })),
+    Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' })),
+    Fun: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' }))
 };
 
 let isEditMode = false;
@@ -552,57 +699,219 @@ function saveUrls() {
     chrome.storage.local.set({ myUrlsData });
 }
 
+const colors = [
+    // Grayscale
+    '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
+    // Theme hues
+    '#980000', '#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff',
+    // Google Docs standard shade blocks
+    '#e6b8af', '#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc',
+    '#dd7e6b', '#ea9999', '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd',
+    '#cc4125', '#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc', '#8e7cc3', '#c27ba0',
+    '#a61c00', '#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3c78d8', '#3d85c6', '#674ea7', '#a64d79',
+    '#5b0f00', '#660000', '#783f04', '#7f6000', '#274e13', '#0c343d', '#1c4587', '#073763', '#20124d', '#4c1130'
+];
+
+const textGrid = urlsRoot.getElementById('text-color-grid');
+const bgGrid = urlsRoot.getElementById('bg-color-grid');
+const popover = urlsRoot.getElementById('color-picker-popover');
+let activePopoverCell = null; // { quad, index }
+
+colors.forEach(color => {
+    // Text Color Box
+    const textBox = document.createElement('div');
+    textBox.className = 'color-box';
+    textBox.style.backgroundColor = color;
+    textBox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activePopoverCell) {
+            const { quad, index } = activePopoverCell;
+            myUrlsData[quad][index].fgColor = color;
+            saveUrls();
+            renderUrls();
+        }
+    });
+    textGrid.appendChild(textBox);
+
+    // Background Color Box
+    const bgBox = document.createElement('div');
+    bgBox.className = 'color-box';
+    bgBox.style.backgroundColor = color;
+    bgBox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activePopoverCell) {
+            const { quad, index } = activePopoverCell;
+            myUrlsData[quad][index].bgColor = color;
+            saveUrls();
+            renderUrls();
+        }
+    });
+    bgGrid.appendChild(bgBox);
+});
+
+urlsRoot.getElementById('btn-reset-cell').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (activePopoverCell) {
+        const { quad, index } = activePopoverCell;
+        myUrlsData[quad][index].bgColor = '';
+        myUrlsData[quad][index].fgColor = '';
+        saveUrls();
+        renderUrls();
+    }
+});
+
+urlsRoot.getElementById('btn-close-popover').addEventListener('click', (e) => {
+    e.stopPropagation();
+    popover.style.display = 'none';
+    activePopoverCell = null;
+});
+
+// Close popover when clicking anywhere else in the urls panel
+urlsHost.addEventListener('click', () => {
+    popover.style.display = 'none';
+    activePopoverCell = null;
+});
+popover.addEventListener('click', (e) => {
+    e.stopPropagation();
+});
+
 function renderUrls() {
     const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
 
     quadrants.forEach(quad => {
         const listDiv = urlsRoot.getElementById('list-' + quad);
-        const addBtn = urlsRoot.getElementById('add-' + quad);
         listDiv.innerHTML = '';
-        addBtn.style.display = isEditMode ? 'block' : 'none';
 
-        myUrlsData[quad].forEach((item, index) => {
-            if (isEditMode) {
-                const row = document.createElement('div');
-                row.className = 'edit-row';
+        const table = document.createElement('table');
+        table.className = isEditMode ? 'edit-mode' : 'display-mode';
 
-                const nameInput = document.createElement('input');
-                nameInput.className = 'edit-input';
-                nameInput.value = item.name;
-                nameInput.placeholder = 'Display Name';
-                nameInput.onchange = (e) => { myUrlsData[quad][index].name = e.target.value; saveUrls(); };
+        for (let r = 0; r < 10; r++) {
+            const tr = document.createElement('tr');
+            for (let c = 0; c < 2; c++) {
+                const td = document.createElement('td');
+                const cellIndex = r * 2 + c;
+                const item = myUrlsData[quad][cellIndex];
 
-                const urlInput = document.createElement('input');
-                urlInput.className = 'edit-input';
-                urlInput.value = item.url;
-                urlInput.placeholder = 'URL';
-                urlInput.onchange = (e) => { myUrlsData[quad][index].url = e.target.value; saveUrls(); };
+                if (item.bgColor) td.style.backgroundColor = item.bgColor;
+                if (item.fgColor) td.style.color = item.fgColor;
 
-                row.appendChild(nameInput);
-                row.appendChild(urlInput);
-                listDiv.appendChild(row);
-            } else {
-                if (item.name || item.url) {
-                    const link = document.createElement('a');
-                    link.className = 'display-link';
-                    // Auto-prefix with http:// if missing so the link actually navigates properly
-                    link.href = (item.url && !item.url.startsWith('http')) ? 'https://' + item.url : item.url;
-                    link.target = '_blank';
-                    link.innerText = item.name || item.url;
-                    listDiv.appendChild(link);
+                if (isEditMode) {
+                    const container = document.createElement('div');
+                    container.className = 'edit-cell-container';
+
+                    const nameInput = document.createElement('input');
+                    nameInput.className = 'cell-input';
+                    nameInput.type = 'text';
+                    nameInput.value = item.name;
+                    nameInput.placeholder = 'Name';
+                    nameInput.addEventListener('input', (e) => {
+                        myUrlsData[quad][cellIndex].name = e.target.value;
+                        saveUrls();
+                    });
+
+                    const urlInput = document.createElement('input');
+                    urlInput.className = 'cell-input';
+                    urlInput.type = 'text';
+                    urlInput.value = item.url;
+                    urlInput.placeholder = 'URL';
+                    urlInput.addEventListener('input', (e) => {
+                        myUrlsData[quad][cellIndex].url = e.target.value;
+                        saveUrls();
+                    });
+
+                    const pickerBtn = document.createElement('button');
+                    pickerBtn.className = 'btn-color-picker';
+                    pickerBtn.innerText = '🎨';
+                    pickerBtn.title = 'Cell Colors';
+                    pickerBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        activePopoverCell = { quad, index: cellIndex };
+                        
+                        const rect = pickerBtn.getBoundingClientRect();
+                        const hostRect = urlsHost.getBoundingClientRect();
+                        
+                        let topPos = rect.bottom - hostRect.top;
+                        let leftPos = rect.left - hostRect.left - 130;
+                        
+                        if (leftPos < 10) leftPos = 10;
+                        if (topPos + 180 > hostRect.height) {
+                            topPos = rect.top - hostRect.top - 185;
+                        }
+                        
+                        popover.style.top = `${topPos}px`;
+                        popover.style.left = `${leftPos}px`;
+                        popover.style.display = 'block';
+                    });
+
+                    container.appendChild(nameInput);
+                    container.appendChild(urlInput);
+                    container.appendChild(pickerBtn);
+                    td.appendChild(container);
+                } else {
+                    if (item.name || item.url) {
+                        const link = document.createElement('a');
+                        link.className = 'display-link';
+                        link.href = (item.url && !item.url.startsWith('http')) ? 'https://' + item.url : item.url;
+                        link.target = '_blank';
+                        link.innerText = item.name || item.url;
+                        if (item.fgColor) {
+                            link.style.color = item.fgColor;
+                        } else {
+                            link.style.color = '#2563eb';
+                        }
+                        td.appendChild(link);
+                    }
                 }
+                tr.appendChild(td);
             }
-        });
+            table.appendChild(tr);
+        }
+        listDiv.appendChild(table);
     });
 
     const modeToggle = urlsRoot.getElementById('mode-toggle');
     modeToggle.checked = isEditMode;
 }
 
+function ensure20Cells(data) {
+    const result = [];
+    for (let i = 0; i < 20; i++) {
+        if (data && data[i]) {
+            result.push({
+                name: data[i].name || '',
+                url: data[i].url || '',
+                bgColor: data[i].bgColor || '',
+                fgColor: data[i].fgColor || ''
+            });
+        } else {
+            result.push({ name: '', url: '', bgColor: '', fgColor: '' });
+        }
+    }
+    return result;
+}
+
 // Load from storage
 chrome.storage.local.get(['myUrlsData'], (result) => {
     if (result.myUrlsData) {
-        myUrlsData = result.myUrlsData;
+        myUrlsData = {
+            Daily: ensure20Cells(result.myUrlsData.Daily),
+            Media: ensure20Cells(result.myUrlsData.Media),
+            Financial: ensure20Cells(result.myUrlsData.Financial),
+            Fun: ensure20Cells(result.myUrlsData.Fun)
+        };
+    } else {
+        const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' }));
+        myUrlsData = {
+            Daily: initQuad(),
+            Media: initQuad(),
+            Financial: initQuad(),
+            Fun: initQuad()
+        };
+        // Default samples
+        myUrlsData.Daily[0] = { name: 'Google', url: 'https://google.com', bgColor: '', fgColor: '' };
+        myUrlsData.Media[0] = { name: 'YouTube', url: 'https://youtube.com', bgColor: '', fgColor: '' };
+        myUrlsData.Financial[0] = { name: 'Chase', url: 'https://chase.com', bgColor: '', fgColor: '' };
+        myUrlsData.Fun[0] = { name: 'Reddit', url: 'https://reddit.com', bgColor: '', fgColor: '' };
     }
     renderUrls();
 });
@@ -612,15 +921,6 @@ const modeToggle = urlsRoot.getElementById('mode-toggle');
 modeToggle.addEventListener('change', (e) => {
     isEditMode = e.target.checked;
     renderUrls();
-});
-
-// Add Buttons
-['Daily', 'Media', 'Financial', 'Fun'].forEach(quad => {
-    urlsRoot.getElementById('add-' + quad).addEventListener('click', () => {
-        myUrlsData[quad].push({ name: '', url: '' });
-        saveUrls();
-        renderUrls();
-    });
 });
 
 document.body.appendChild(floatingButton);
