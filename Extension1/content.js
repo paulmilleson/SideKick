@@ -699,7 +699,7 @@ function saveUrls() {
     chrome.storage.local.set({ myUrlsData });
 }
 
-const colors = [
+const paletteColors = [
     // Grayscale
     '#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff',
     // Theme hues
@@ -717,7 +717,7 @@ const bgGrid = urlsRoot.getElementById('bg-color-grid');
 const popover = urlsRoot.getElementById('color-picker-popover');
 let activePopoverCell = null; // { quad, index }
 
-colors.forEach(color => {
+paletteColors.forEach(color => {
     // Text Color Box
     const textBox = document.createElement('div');
     textBox.className = 'color-box';
