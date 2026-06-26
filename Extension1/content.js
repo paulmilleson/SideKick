@@ -640,6 +640,33 @@ urlsRoot.innerHTML = `
     .btn-popover:hover {
         background: #e2e8f0;
     }
+    .format-option {
+        margin-bottom: 6px;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #475569;
+        width: 100%;
+    }
+    .format-option label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 10px;
+        color: #475569;
+    }
+    .format-option select {
+        font-size: 9px;
+        padding: 2px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        background: white;
+        color: #1e293b;
+        cursor: pointer;
+    }
 </style>
 <div class="header">
     <label>
@@ -667,6 +694,37 @@ urlsRoot.innerHTML = `
 
 <!-- Custom Google Docs Style Color Picker Popover -->
 <div id="color-picker-popover">
+    <div class="color-picker-section" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+        <div class="color-picker-title">✏️ Typography</div>
+        <div class="format-option">
+            <label><input type="checkbox" id="cell-bold-checkbox"> Bold</label>
+        </div>
+        <div class="format-option" style="justify-content: space-between;">
+            <label style="width: 100%; display: flex; justify-content: space-between; align-items: center;">Font:
+                <select id="cell-font-family">
+                    <option value="Verdana, sans-serif">Verdana</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="Courier New, monospace">Courier</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="Impact, sans-serif">Impact</option>
+                    <option value="Times New Roman, serif">Times</option>
+                </select>
+            </label>
+        </div>
+        <div class="format-option" style="justify-content: space-between;">
+            <label style="width: 100%; display: flex; justify-content: space-between; align-items: center;">Size:
+                <select id="cell-font-size">
+                    <option value="8px">8px</option>
+                    <option value="9px">9px</option>
+                    <option value="10px">10px</option>
+                    <option value="11px">11px</option>
+                    <option value="12px">12px</option>
+                    <option value="14px">14px</option>
+                    <option value="16px">16px</option>
+                </select>
+            </label>
+        </div>
+    </div>
     <div class="color-picker-section">
         <div class="color-picker-title">
             <span>A</span> Text Color
@@ -687,10 +745,10 @@ urlsRoot.innerHTML = `
 `;
 
 let myUrlsData = {
-    Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' })),
-    Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' })),
-    Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' })),
-    Fun: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' }))
+    Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+    Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+    Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+    Fun: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }))
 };
 
 let isEditMode = false;
@@ -749,14 +807,50 @@ paletteColors.forEach(color => {
     bgGrid.appendChild(bgBox);
 });
 
+// Setup popover controls listeners
+urlsRoot.getElementById('cell-bold-checkbox').addEventListener('change', (e) => {
+    if (activePopoverCell) {
+        const { quad, index } = activePopoverCell;
+        myUrlsData[quad][index].fontWeight = e.target.checked ? 'bold' : 'normal';
+        saveUrls();
+        renderUrls();
+    }
+});
+
+urlsRoot.getElementById('cell-font-family').addEventListener('change', (e) => {
+    if (activePopoverCell) {
+        const { quad, index } = activePopoverCell;
+        myUrlsData[quad][index].fontFamily = e.target.value;
+        saveUrls();
+        renderUrls();
+    }
+});
+
+urlsRoot.getElementById('cell-font-size').addEventListener('change', (e) => {
+    if (activePopoverCell) {
+        const { quad, index } = activePopoverCell;
+        myUrlsData[quad][index].fontSize = e.target.value;
+        saveUrls();
+        renderUrls();
+    }
+});
+
 urlsRoot.getElementById('btn-reset-cell').addEventListener('click', (e) => {
     e.stopPropagation();
     if (activePopoverCell) {
         const { quad, index } = activePopoverCell;
         myUrlsData[quad][index].bgColor = '';
         myUrlsData[quad][index].fgColor = '';
+        myUrlsData[quad][index].fontWeight = 'normal';
+        myUrlsData[quad][index].fontFamily = 'Verdana, sans-serif';
+        myUrlsData[quad][index].fontSize = '10px';
         saveUrls();
         renderUrls();
+
+        // Sync inputs
+        urlsRoot.getElementById('cell-bold-checkbox').checked = false;
+        urlsRoot.getElementById('cell-font-family').value = 'Verdana, sans-serif';
+        urlsRoot.getElementById('cell-font-size').value = '10px';
     }
 });
 
@@ -794,6 +888,9 @@ function renderUrls() {
 
                 if (item.bgColor) td.style.backgroundColor = item.bgColor;
                 if (item.fgColor) td.style.color = item.fgColor;
+                td.style.fontWeight = item.fontWeight || 'normal';
+                td.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
+                td.style.fontSize = item.fontSize || '10px';
 
                 if (isEditMode) {
                     const container = document.createElement('div');
@@ -822,7 +919,7 @@ function renderUrls() {
                     const pickerBtn = document.createElement('button');
                     pickerBtn.className = 'btn-color-picker';
                     pickerBtn.innerText = '🎨';
-                    pickerBtn.title = 'Cell Colors';
+                    pickerBtn.title = 'Format Cell';
                     pickerBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         activePopoverCell = { quad, index: cellIndex };
@@ -834,9 +931,14 @@ function renderUrls() {
                         let leftPos = rect.left - hostRect.left - 130;
                         
                         if (leftPos < 10) leftPos = 10;
-                        if (topPos + 180 > hostRect.height) {
-                            topPos = rect.top - hostRect.top - 185;
+                        if (topPos + 220 > hostRect.height) {
+                            topPos = rect.top - hostRect.top - 225;
                         }
+                        
+                        // Sync popup controls with current cell state
+                        urlsRoot.getElementById('cell-bold-checkbox').checked = item.fontWeight === 'bold';
+                        urlsRoot.getElementById('cell-font-family').value = item.fontFamily || 'Verdana, sans-serif';
+                        urlsRoot.getElementById('cell-font-size').value = item.fontSize || '10px';
                         
                         popover.style.top = `${topPos}px`;
                         popover.style.left = `${leftPos}px`;
@@ -854,6 +956,10 @@ function renderUrls() {
                         link.href = (item.url && !item.url.startsWith('http')) ? 'https://' + item.url : item.url;
                         link.target = '_blank';
                         link.innerText = item.name || item.url;
+                        
+                        link.style.fontWeight = item.fontWeight || 'normal';
+                        link.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
+                        link.style.fontSize = item.fontSize || '10px';
                         if (item.fgColor) {
                             link.style.color = item.fgColor;
                         } else {
@@ -881,10 +987,13 @@ function ensure20Cells(data) {
                 name: data[i].name || '',
                 url: data[i].url || '',
                 bgColor: data[i].bgColor || '',
-                fgColor: data[i].fgColor || ''
+                fgColor: data[i].fgColor || '',
+                fontWeight: data[i].fontWeight || 'normal',
+                fontFamily: data[i].fontFamily || 'Verdana, sans-serif',
+                fontSize: data[i].fontSize || '10px'
             });
         } else {
-            result.push({ name: '', url: '', bgColor: '', fgColor: '' });
+            result.push({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' });
         }
     }
     return result;
@@ -900,7 +1009,7 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
             Fun: ensure20Cells(result.myUrlsData.Fun)
         };
     } else {
-        const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '' }));
+        const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
         myUrlsData = {
             Daily: initQuad(),
             Media: initQuad(),
@@ -908,10 +1017,10 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
             Fun: initQuad()
         };
         // Default samples
-        myUrlsData.Daily[0] = { name: 'Google', url: 'https://google.com', bgColor: '', fgColor: '' };
-        myUrlsData.Media[0] = { name: 'YouTube', url: 'https://youtube.com', bgColor: '', fgColor: '' };
-        myUrlsData.Financial[0] = { name: 'Chase', url: 'https://chase.com', bgColor: '', fgColor: '' };
-        myUrlsData.Fun[0] = { name: 'Reddit', url: 'https://reddit.com', bgColor: '', fgColor: '' };
+        myUrlsData.Daily[0] = { name: 'Google', url: 'https://google.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+        myUrlsData.Media[0] = { name: 'YouTube', url: 'https://youtube.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+        myUrlsData.Financial[0] = { name: 'Chase', url: 'https://chase.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+        myUrlsData.Fun[0] = { name: 'Reddit', url: 'https://reddit.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
     }
     renderUrls();
 });
