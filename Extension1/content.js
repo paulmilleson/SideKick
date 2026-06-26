@@ -694,6 +694,10 @@ urlsRoot.innerHTML = `
 
 <!-- Custom Google Docs Style Color Picker Popover -->
 <div id="color-picker-popover">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">
+        <span style="font-size: 10px; font-weight: bold; color: #475569;">Format Cell</span>
+        <a href="#" id="link-close-popover" style="font-size: 10px; color: #2563eb; text-decoration: none; font-weight: bold;">Close</a>
+    </div>
     <div class="color-picker-section" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
         <div class="color-picker-title">✏️ Typography</div>
         <div class="format-option">
@@ -738,8 +742,7 @@ urlsRoot.innerHTML = `
         <div class="color-grid" id="bg-color-grid"></div>
     </div>
     <div class="popover-footer">
-        <button class="btn-popover" id="btn-reset-cell">Reset Colors</button>
-        <button class="btn-popover" id="btn-close-popover">Close</button>
+        <button class="btn-popover" id="btn-reset-cell" style="width: 100%;">Reset Colors</button>
     </div>
 </div>
 `;
@@ -854,7 +857,8 @@ urlsRoot.getElementById('btn-reset-cell').addEventListener('click', (e) => {
     }
 });
 
-urlsRoot.getElementById('btn-close-popover').addEventListener('click', (e) => {
+urlsRoot.getElementById('link-close-popover').addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
     popover.style.display = 'none';
     activePopoverCell = null;
