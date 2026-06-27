@@ -7143,3 +7143,937 @@ Completed At: 2026-06-26T23:59:37Z
 			
 			Stderr:
 
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-26T23:59:40Z
+Completed At: 2026-06-26T23:59:52Z
+
+				The command completed successfully.
+				Output:
+				Successfully wrote cleaned conversation history to C:\Users\owner\Documents\Extension1\Extension1\chat_history.md
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-26T23:59:53Z
+Completed At: 2026-06-27T00:00:04Z
+
+				The command completed successfully.
+				Output:
+				Successfully wrote premium HTML page to C:\Users\owner\Documents\Extension1\Extension1\chat_history.html
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:00:06Z
+Completed At: 2026-06-27T00:00:19Z
+
+				The command completed successfully.
+				Output:
+				warning: in the working copy of 'Extension1/chat_history.md', LF will be replaced by CRLF the next time Git touches it
+[paul 4475554] feat: highlight selected colors with outlines and persist select dropdown font face/size styling
+ 2 files changed, 543 insertions(+), 4 deletions(-)
+To https://github.com/paulmilleson/SideKick.git
+   19cf1fc..4475554  paul -> paul
+
+---
+
+### 🤖 Antigravity (AI)
+
+I have successfully implemented both of these enhancements!
+
+### What's new:
+1. **Selected Colors Highlight:**
+   * The currently selected **Text Color** and **Highlight Color** will now display with a distinct, thick blue outline (`outline: 2px solid #2563eb`) around their color boxes when you open the formatting panel or click a new color.
+2. **Typography Style Persistence on Select Dropdowns:**
+   * The font-family and font-size drop-down select boxes now **visually apply** the selected font face and size to themselves. 
+   * This ensures the currently selected values are displayed on top of the closed select dropdowns in their actual style (e.g. if you select *Courier*, the dropdown box displays "Courier" in Courier; if you select *14px*, the dropdown box displays "14px" in 14px size).
+
+All updates are committed and pushed to the `paul` branch of your GitHub repository. Reload the extension on `chrome://extensions/` and refresh your browser tab to see it in action!
+
+---
+
+### 👤 User
+
+please make the titles of the panels editable when in edit mode
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:06:50Z
+Completed At: 2026-06-27T00:06:50Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 670 to 705
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+670:     .color-box.selected {
+671:         outline: 2px solid #2563eb;
+672:         outline-offset: 1px;
+673:         box-shadow: 0 0 4px rgba(37,99,235,0.6);
+674:         transform: scale(1.15);
+675:         z-index: 2;
+676:         border-color: #1e293b;
+677:     }
+678: </style>
+679: <div class="header">
+680:     <label>
+681:         <input type="checkbox" id="mode-toggle"> Edit Mode
+682:     </label>
+683: </div>
+684: <div class="grid">
+685:     <div class="quadrant q-daily">
+686:         <h2 class="title">Daily</h2>
+687:         <div id="list-Daily"></div>
+688:     </div>
+689:     <div class="quadrant q-media">
+690:         <h2 class="title">Media</h2>
+691:         <div id="list-Media"></div>
+692:     </div>
+693:     <div class="quadrant q-financial">
+694:         <h2 class="title">Financial</h2>
+695:         <div id="list-Financial"></div>
+696:     </div>
+697:     <div class="quadrant q-fun">
+698:         <h2 class="title">Fun</h2>
+699:         <div id="list-Fun"></div>
+700:     </div>
+701: </div>
+702: 
+703: <!-- Custom Google Docs Style Color Picker Popover -->
+704: <div id="color-picker-popover">
+705:     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:06:52Z
+Completed At: 2026-06-27T00:06:52Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 745 to 765
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+745:     </div>
+746:     <div class="color-picker-section">
+747:         <div class="color-picker-title">
+748:             <span>✏️</span> Highlight Color
+749:         </div>
+750:         <div class="color-grid" id="bg-color-grid"></div>
+751:     </div>
+752:     <div class="popover-footer">
+753:         <button class="btn-popover" id="btn-reset-cell" style="width: 100%;">Reset Colors</button>
+754:     </div>
+755: </div>
+756: `;
+757: 
+758: let myUrlsData = {
+759:     Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+760:     Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+761:     Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+762:     Fun: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }))
+763: };
+764: 
+765: let isEditMode = false;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:06:54Z
+Completed At: 2026-06-27T00:06:54Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 1200 to 1262
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1200:         case '*': result = prev * current; break;
+1201:         case '/': result = current === 0 ? 'Error' : prev / current; break;
+1202:         case '%': result = prev % current; break;
+1203:         default: return;
+1204:     }
+1205:     currentOperand = result === 'Error' ? 'Error' : result.toString();
+1206:     operation = null; previousOperand = ''; shouldResetScreen = true;
+1207: }
+1208: 
+1209: keypad.addEventListener('click', (e) => {
+1210:     if (e.target.tagName !== 'BUTTON') return;
+1211:     if (currentOperand === 'Error' && e.target.dataset.action !== 'clear') clear();
+1212:     const btn = e.target;
+1213:     const action = btn.dataset.action;
+1214:     const val = btn.dataset.val;
+1215:     if (action === 'number') appendNumber(val);
+1216:     else if (action === 'operator') chooseOperation(val);
+1217:     else if (action === 'decimal') appendNumber(val);
+1218:     else if (action === 'clear') clear();
+1219:     else if (action === 'delete') deleteNumber();
+1220:     else if (action === 'calculate') calculate();
+1221:     updateDisplay();
+1222: });
+1223: 
+1224: document.addEventListener('keydown', (e) => {
+1225:     // Global shortcut: Alt + S or Ctrl + Shift + S to toggle the floating button itself
+1226:     if ((e.altKey && e.key.toLowerCase() === 's') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's')) {
+1227:         e.preventDefault();
+1228:         if (floatingButton.style.display !== 'none') {
+1229:             floatingButton.style.display = 'none';
+1230:             calcHost.style.display = 'none';
+1231:             navPanel.style.display = 'none';
+1232:             tetrisHost.style.display = 'none';
+1233:             urlsHost.style.display = 'none';
+1234:         } else {
+1235:             floatingButton.style.display = 'flex';
+1236:         }
+1237:         return;
+1238:     }
+1239: 
+1240:     // Escape tiered shutdown logic
+1241:     if (e.key === 'Escape') {
+1242:         if (calcHost.style.display === 'block') {
+1243:             // If calculator is open, return to nav panel
+1244:             calcHost.style.display = 'none';
+1245:             navPanel.style.display = 'flex';
+1246:             clear();
+1247:             updateDisplay();
+1248:             return;
+1249:         } else if (tetrisHost.style.display === 'block') {
+1250:             // If tetris is open, return to nav panel
+1251:             tetrisHost.style.display = 'none';
+1252:             navPanel.style.display = 'flex';
+1253:             return;
+1254:         } else if (urlsHost.style.display === 'block') {
+1255:             // If urls panel is open, return to nav panel
+1256:             urlsHost.style.display = 'none';
+1257:             navPanel.style.display = 'flex';
+1258:             return;
+1259:         } else if (navPanel.style.display === 'flex') {
+1260:             // If nav panel is open, close it
+1261:             navPanel.style.display = 'none';
+1262:             return;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:06:56Z
+Completed At: 2026-06-27T00:06:56Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 1120 to 1199
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1120:     const rect = floatingButton.getBoundingClientRect();
+1121:     btnStartX = rect.left;
+1122:     btnStartY = rect.top;
+1123: 
+1124:     floatingButton.style.cursor = 'grabbing';
+1125:     e.preventDefault(); // Prevents cursor text/highlighting issues
+1126: });
+1127: 
+1128: window.addEventListener('mousemove', (e) => {
+1129:     if (!isDragging) return;
+1130: 
+1131:     const dx = e.clientX - dragStartX;
+1132:     const dy = e.clientY - dragStartY;
+1133: 
+1134:     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+1135:         hasDragged = true;
+1136:     }
+1137: 
+1138:     repositionButtonAndPanels(btnStartX + dx, btnStartY + dy);
+1139: });
+1140: 
+1141: window.addEventListener('mouseup', () => {
+1142:     if (isDragging) {
+1143:         isDragging = false;
+1144:         floatingButton.style.cursor = 'grab';
+1145:     }
+1146: });
+1147: 
+1148: // Window Resize Handling
+1149: window.addEventListener('resize', () => {
+1150:     repositionButtonAndPanels(currentBtnLeft, currentBtnTop);
+1151: });
+1152: 
+1153: // Initialize position using top/left coordinates
+1154: repositionButtonAndPanels(currentBtnLeft, currentBtnTop);
+1155: 
+1156: // Calculator Logic inside Shadow DOM
+1157: const currentDisplay = shadowRoot.getElementById('current');
+1158: const historyDisplay = shadowRoot.getElementById('history');
+1159: const keypad = shadowRoot.getElementById('keypad');
+1160: 
+1161: let currentOperand = '0';
+1162: let previousOperand = '';
+1163: let operation = null;
+1164: let shouldResetScreen = false;
+1165: 
+1166: function formatNumb
+<truncated 474 bytes>
+rDisplay;
+1173: }
+1174: 
+1175: function updateDisplay() {
+1176:     currentDisplay.innerText = formatNumber(currentOperand);
+1177:     if (operation != null) {
+1178:         let opSymbol = operation;
+1179:         if (operation === '*') opSymbol = '×';
+1180:         if (operation === '/') opSymbol = '÷';
+1181:         historyDisplay.innerText = `${formatNumber(previousOperand)} ${opSymbol}`;
+1182:     } else {
+1183:         historyDisplay.innerText = '';
+1184:     }
+1185: }
+1186: 
+1187: function clear() { currentOperand = '0'; previousOperand = ''; operation = null; shouldResetScreen = false; }
+1188: function deleteNumber() { if (currentOperand === '0' || shouldResetScreen) { shouldResetScreen = false; return; } currentOperand = currentOperand.toString().slice(0, -1); if (currentOperand === '' || currentOperand === '-') currentOperand = '0'; }
+1189: function appendNumber(number) { if (currentOperand === '0' && number !== '.') { currentOperand = number; return; } if (shouldResetScreen) { currentOperand = number; shouldResetScreen = false; return; } if (number === '.' && currentOperand.includes('.')) return; currentOperand = currentOperand.toString() + number; }
+1190: function chooseOperation(op) { if (currentOperand === '0' && op === '-') { currentOperand = '-'; return; } if (currentOperand === '-' || currentOperand === '') return; if (previousOperand !== '') { calculate(); } operation = op; previousOperand = currentOperand; currentOperand = '0'; }
+1191: 
+1192: function calculate() {
+1193:     let result;
+1194:     const prev = parseFloat(previousOperand);
+1195:     const current = parseFloat(currentOperand);
+1196:     if (isNaN(prev) || isNaN(current)) return;
+1197:     switch (operation) {
+1198:         case '+': result = prev + current; break;
+1199:         case '-': result = prev - current; break;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:06:59Z
+Completed At: 2026-06-27T00:06:59Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 1050 to 1120
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1050: }
+1051: 
+1052: // Load from storage
+1053: chrome.storage.local.get(['myUrlsData'], (result) => {
+1054:     if (result.myUrlsData) {
+1055:         myUrlsData = {
+1056:             Daily: ensure20Cells(result.myUrlsData.Daily),
+1057:             Media: ensure20Cells(result.myUrlsData.Media),
+1058:             Financial: ensure20Cells(result.myUrlsData.Financial),
+1059:             Fun: ensure20Cells(result.myUrlsData.Fun)
+1060:         };
+1061:     } else {
+1062:         const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
+1063:         myUrlsData = {
+1064:             Daily: initQuad(),
+1065:             Media: initQuad(),
+1066:             Financial: initQuad(),
+1067:             Fun: initQuad()
+1068:         };
+1069:         // Default samples
+1070:         myUrlsData.Daily[0] = { name: 'Google', url: 'https://google.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1071:         myUrlsData.Media[0] = { name: 'YouTube', url: 'https://youtube.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1072:         myUrlsData.Financial[0] = { name: 'Chase', url: 'https://chase.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1073:         myUrlsData.Fun[0] = { name: 'Reddit', url: 'https://reddit.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1074:     }
+1075:     renderUrls();
+1076: });
+1077: 
+1078: // Mode Toggle
+1079: const modeToggle = urlsRoot.getElementById('mode-toggle');
+1080: modeToggle.addEventListener('change', (e) => {
+1081:     isEditMode = e.target.checked;
+1082:     renderUrls();
+1083: });
+1084: 
+1085: document.body.appendChild(floatingButton);
+1086: document.body.appendChild(navPanel);
+1087: document.body.appendChild(calcHost);
+1088: document.body.appendChild(tetrisHost);
+1089: document.body.appendChild(urlsHost);
+1090: 
+1091: // Toggle visibility
+1092: floatingButton.addEventListener('click', () => {
+1093:     // If the button was dragged, ignore the click event and reset flag
+1094:     if (hasDragged) {
+1095:         hasDragged = false;
+1096:         return;
+1097:     }
+1098:     if (calcHost.style.display === 'block') {
+1099:         calcHost.style.display = 'none';
+1100:         navPanel.style.display = 'flex';
+1101:     } else {
+1102:         if (navPanel.style.display === 'none') {
+1103:             navPanel.style.display = 'flex';
+1104:         } else {
+1105:             navPanel.style.display = 'none';
+1106:         }
+1107:     }
+1108: });
+1109: 
+1110: // Dragging Logic
+1111: floatingButton.addEventListener('mousedown', (e) => {
+1112:     // Only allow dragging with left-click
+1113:     if (e.button !== 0) return;
+1114: 
+1115:     isDragging = true;
+1116:     hasDragged = false;
+1117:     dragStartX = e.clientX;
+1118:     dragStartY = e.clientY;
+1119: 
+1120:     const rect = floatingButton.getBoundingClientRect();
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:01Z
+Completed At: 2026-06-27T00:07:02Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 595 to 640
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+595:     }
+596:     .color-picker-title {
+597:         font-size: 9px;
+598:         font-weight: bold;
+599:         margin-bottom: 4px;
+600:         text-transform: uppercase;
+601:         color: #64748b;
+602:         display: flex;
+603:         align-items: center;
+604:         gap: 4px;
+605:     }
+606:     .color-grid {
+607:         display: grid;
+608:         grid-template-columns: repeat(10, 1fr);
+609:         gap: 2px;
+610:     }
+611:     .color-box {
+612:         width: 12px;
+613:         height: 12px;
+614:         border-radius: 2px;
+615:         cursor: pointer;
+616:         border: 1px solid #e2e8f0;
+617:         box-sizing: border-box;
+618:     }
+619:     .color-box:hover {
+620:         transform: scale(1.2);
+621:         border-color: #64748b;
+622:         z-index: 1;
+623:     }
+624:     .popover-footer {
+625:         border-top: 1px solid #e2e8f0;
+626:         padding-top: 8px;
+627:         display: flex;
+628:         gap: 4px;
+629:     }
+630:     .btn-popover {
+631:         flex: 1;
+632:         padding: 4px;
+633:         font-size: 8px;
+634:         background: #f1f5f9;
+635:         border: 1px solid #cbd5e1;
+636:         border-radius: 4px;
+637:         cursor: pointer;
+638:         font-weight: bold;
+639:     }
+640:     .btn-popover:hover {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:03Z
+Completed At: 2026-06-27T00:07:03Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 480 to 520
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+480: urlsHost.id = 'floating-urls-host';
+481: Object.assign(urlsHost.style, {
+482:     position: 'fixed', bottom: '90px', right: '20px', width: '768px', height: '576px',
+483:     zIndex: '2147483647', display: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+484:     borderRadius: '16px', overflow: 'hidden', backgroundColor: '#f8fafc'
+485: });
+486: const urlsRoot = urlsHost.attachShadow({ mode: 'open' });
+487: 
+488: urlsRoot.innerHTML = `
+489: <style>
+490:     :host { display:block; width:100%; height:100%; background:#f8fafc; color:#1e293b; font-family: Verdana, sans-serif; box-sizing: border-box; position: relative; }
+491:     * { box-sizing: inherit; }
+492:     .header { padding: 10px; display: flex; justify-content: flex-end; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+493:     .header label { font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+494:     .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: calc(100% - 41px); }
+495:     .quadrant { padding: 10px; display: flex; flex-direction: column; overflow-y: auto; }
+496:     .q-daily { background-color: #bbf7d0; } /* pastel green (darkened) */
+497:     .q-media { background-color: #fce7f3; } /* pastel pink */
+498:     .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
+499:     .q-fun { background-color: #fef08a; } /* pastel yellow */
+500:     .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; color: #475569; }
+501:     
+502:     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+503:     td {
+504:         padding: 4px;
+505:         vertical-align: middle;
+506:         font-family: Verdana, sans-serif;
+507:         font-size: 10px;
+508:         height: 38px;
+509:         box-sizing: border-box;
+510:         position: relative;
+511:     }
+512:     
+513:     .display-mode td { border: none; }
+514:     .edit-mode td { border: 1px solid #cbd5e1; }
+515: 
+516:     /* Display Mode link */
+517:     .display-link {
+518:         font-family: Verdana, sans-serif;
+519:         font-size: 10px;
+520:         text-decoration: none;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:05Z
+Completed At: 2026-06-27T00:07:05Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1312
+Total Bytes: 51249
+Showing lines 490 to 715
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+490:     :host { display:block; width:100%; height:100%; background:#f8fafc; color:#1e293b; font-family: Verdana, sans-serif; box-sizing: border-box; position: relative; }
+491:     * { box-sizing: inherit; }
+492:     .header { padding: 10px; display: flex; justify-content: flex-end; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+493:     .header label { font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+494:     .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: calc(100% - 41px); }
+495:     .quadrant { padding: 10px; display: flex; flex-direction: column; overflow-y: auto; }
+496:     .q-daily { background-color: #bbf7d0; } /* pastel green (darkened) */
+497:     .q-media { background-color: #fce7f3; } /* pastel pink */
+498:     .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
+499:     .q-fun { background-color: #fef08a; } /* pastel yellow */
+500:     .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; color: #475569; }
+501:     
+502:     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+503:     td {
+504:         padding: 4px;
+505:         vertical-align: middle;
+506:         font-family: Verdana, sans-serif;
+507:         font-size: 10px;
+508:         height: 38px;
+509:         box-sizing: border-box;
+510:         position: relative;
+511:     }
+512:     
+513:     .display-mode 
+<truncated 4970 bytes>
+     }
+678: </style>
+679: <div class="header">
+680:     <label>
+681:         <input type="checkbox" id="mode-toggle"> Edit Mode
+682:     </label>
+683: </div>
+684: <div class="grid">
+685:     <div class="quadrant q-daily">
+686:         <h2 class="title">Daily</h2>
+687:         <div id="list-Daily"></div>
+688:     </div>
+689:     <div class="quadrant q-media">
+690:         <h2 class="title">Media</h2>
+691:         <div id="list-Media"></div>
+692:     </div>
+693:     <div class="quadrant q-financial">
+694:         <h2 class="title">Financial</h2>
+695:         <div id="list-Financial"></div>
+696:     </div>
+697:     <div class="quadrant q-fun">
+698:         <h2 class="title">Fun</h2>
+699:         <div id="list-Fun"></div>
+700:     </div>
+701: </div>
+702: 
+703: <!-- Custom Google Docs Style Color Picker Popover -->
+704: <div id="color-picker-popover">
+705:     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px;">
+706:         <span style="font-size: 10px; font-weight: bold; color: #475569;">Format Cell</span>
+707:         <a href="#" id="link-close-popover" style="font-size: 10px; color: #2563eb; text-decoration: none; font-weight: bold;">Close</a>
+708:     </div>
+709:     <div class="color-picker-section" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
+710:         <div class="color-picker-title">✏️ Typography</div>
+711:         <div class="format-option">
+712:             <label><input type="checkbox" id="cell-bold-checkbox"> Bold</label>
+713:         </div>
+714:         <div class="format-option" style="justify-content: space-between;">
+715:             <label style="width: 100%; display: flex; justify-content: space-between; align-items: center;">Font:
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:11Z
+Completed At: 2026-06-27T00:07:31Z
+The following changes were made by the replace_file_content tool to: c:\Users\owner\Documents\Extension1\Extension1\content.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -498,6 +498,26 @@
+     .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
+     .q-fun { background-color: #fef08a; } /* pastel yellow */
+     .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; color: #475569; }
++    .title-input {
++        font-family: Verdana, sans-serif;
++        font-size: 12px;
++        font-weight: bold;
++        text-align: center;
++        margin: 0;
++        text-transform: uppercase;
++        color: #475569;
++        border: 1px dashed #cbd5e1;
++        background: transparent;
++        border-radius: 4px;
++        width: 100%;
++        box-sizing: border-box;
++        padding: 2px;
++    }
++    .title-input:focus {
++        border-color: #3b82f6;
++        outline: none;
++        background: white;
++    }
+     
+     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+     td {
+@@ -682,19 +682,19 @@
+ </div>
+ <div class="grid">
+     <div class="quadrant q-daily">
+-        <h2 class="title">Daily</h2>
++        <h2 class="title" id="title-Daily">Daily</h2>
+         <div id="list-Daily"></div>
+     </div>
+     <div class="quadrant q-media">
+-        <h2 class="title">Media</h2>
++        <h2 class="title" id="title-Media">Media</h2>
+         <div id="list-Media"></div>
+     </div>
+     <div class="quadrant q-financial">
+-        <h2 class="title">Financial</h2>
++        <h2 class="title" id="title-Financial">Financial</h2>
+         <div id="list-Financial"></div>
+     </div>
+     <div class="quadrant q-fun">
+-        <h2 class="title">Fun</h2>
++        <h2 class="title" id="title-Fun">Fun</h2>
+         <div id="list-Fun"></div>
+     </div>
+ </div>
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+We did our best to apply changes despite some inaccuracies. Double check if the edit applied is what you intended.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:33Z
+Completed At: 2026-06-27T00:07:33Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1332
+Total Bytes: 51848
+Showing lines 760 to 790
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+760:     <div class="color-picker-section">
+761:         <div class="color-picker-title">
+762:             <span>A</span> Text Color
+763:         </div>
+764:         <div class="color-grid" id="text-color-grid"></div>
+765:     </div>
+766:     <div class="color-picker-section">
+767:         <div class="color-picker-title">
+768:             <span>✏️</span> Highlight Color
+769:         </div>
+770:         <div class="color-grid" id="bg-color-grid"></div>
+771:     </div>
+772:     <div class="popover-footer">
+773:         <button class="btn-popover" id="btn-reset-cell" style="width: 100%;">Reset Colors</button>
+774:     </div>
+775: </div>
+776: `;
+777: 
+778: let myUrlsData = {
+779:     Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+780:     Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+781:     Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+782:     Fun: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }))
+783: };
+784: 
+785: let isEditMode = false;
+786: 
+787: function saveUrls() {
+788:     chrome.storage.local.set({ myUrlsData });
+789: }
+790: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:35Z
+Completed At: 2026-06-27T00:07:39Z
+The following changes were made by the replace_file_content tool to: c:\Users\owner\Documents\Extension1\Extension1\content.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -776,6 +776,7 @@
+ `;
+ 
+ let myUrlsData = {
++    titles: { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
+     Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+     Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+     Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:42Z
+Completed At: 2026-06-27T00:07:42Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1333
+Total Bytes: 51933
+Showing lines 1050 to 1120
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1050:     modeToggle.checked = isEditMode;
+1051: }
+1052: 
+1053: function ensure20Cells(data) {
+1054:     const result = [];
+1055:     for (let i = 0; i < 20; i++) {
+1056:         if (data && data[i]) {
+1057:             result.push({
+1058:                 name: data[i].name || '',
+1059:                 url: data[i].url || '',
+1060:                 bgColor: data[i].bgColor || '',
+1061:                 fgColor: data[i].fgColor || '',
+1062:                 fontWeight: data[i].fontWeight || 'normal',
+1063:                 fontFamily: data[i].fontFamily || 'Verdana, sans-serif',
+1064:                 fontSize: data[i].fontSize || '10px'
+1065:             });
+1066:         } else {
+1067:             result.push({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' });
+1068:         }
+1069:     }
+1070:     return result;
+1071: }
+1072: 
+1073: // Load from storage
+1074: chrome.storage.local.get(['myUrlsData'], (result) => {
+1075:     if (result.myUrlsData) {
+1076:         myUrlsData = {
+1077:             Daily: ensure20Cells(result.myUrlsData.Daily),
+1078:             Media: ensure20Cells(result.myUrlsData.Media),
+1079:             Financial: ensure20Cells(result.myUrlsData.Financial),
+1080:             Fun: ensure20Cells(result.myUrlsData.Fun)
+1081:         };
+1082:     } else {
+1083:         const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
+1084:         myUrlsData = {
+1085:             Daily: initQuad(),
+1086:             Media: initQuad(),
+1087:             Financial: initQuad(),
+1088:             Fun: initQuad()
+1089:         };
+1090:         // Default samples
+1091:         myUrlsData.Daily[0] = { name: 'Google', url: 'https://google.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1092:         myUrlsData.Media[0] = { name: 'YouTube', url: 'https://youtube.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1093:         myUrlsData.Financial[0] = { name: 'Chase', url: 'https://chase.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1094:         myUrlsData.Fun[0] = { name: 'Reddit', url: 'https://reddit.com', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+1095:     }
+1096:     renderUrls();
+1097: });
+1098: 
+1099: // Mode Toggle
+1100: const modeToggle = urlsRoot.getElementById('mode-toggle');
+1101: modeToggle.addEventListener('change', (e) => {
+1102:     isEditMode = e.target.checked;
+1103:     renderUrls();
+1104: });
+1105: 
+1106: document.body.appendChild(floatingButton);
+1107: document.body.appendChild(navPanel);
+1108: document.body.appendChild(calcHost);
+1109: document.body.appendChild(tetrisHost);
+1110: document.body.appendChild(urlsHost);
+1111: 
+1112: // Toggle visibility
+1113: floatingButton.addEventListener('click', () => {
+1114:     // If the button was dragged, ignore the click event and reset flag
+1115:     if (hasDragged) {
+1116:         hasDragged = false;
+1117:         return;
+1118:     }
+1119:     if (calcHost.style.display === 'block') {
+1120:         calcHost.style.display = 'none';
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:47Z
+Completed At: 2026-06-27T00:07:50Z
+The following changes were made by the replace_file_content tool to: c:\Users\owner\Documents\Extension1\Extension1\content.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -1074,6 +1074,7 @@
+ chrome.storage.local.get(['myUrlsData'], (result) => {
+     if (result.myUrlsData) {
+         myUrlsData = {
++            titles: result.myUrlsData.titles || { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
+             Daily: ensure20Cells(result.myUrlsData.Daily),
+             Media: ensure20Cells(result.myUrlsData.Media),
+             Financial: ensure20Cells(result.myUrlsData.Financial),
+@@ -1081,6 +1081,7 @@
+     } else {
+         const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
+         myUrlsData = {
++            titles: { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
+             Daily: initQuad(),
+             Media: initQuad(),
+             Financial: initQuad(),
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:52Z
+Completed At: 2026-06-27T00:07:53Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1335
+Total Bytes: 52147
+Showing lines 903 to 918
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+903:         textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+904:         bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+905:     }
+906: });
+907: 
+908: urlsRoot.getElementById('link-close-popover').addEventListener('click', (e) => {
+909:     e.preventDefault();
+910:     e.stopPropagation();
+911:     popover.style.display = 'none';
+912:     activePopoverCell = null;
+913: });
+914: 
+915: // Close popover when clicking anywhere else in the urls panel
+916: urlsHost.addEventListener('click', () => {
+917:     popover.style.display = 'none';
+918:     activePopoverCell = null;
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:54Z
+Completed At: 2026-06-27T00:07:54Z
+File Path: `file:///c:/Users/owner/Documents/Extension1/Extension1/content.js`
+Total Lines: 1335
+Total Bytes: 52147
+Showing lines 918 to 940
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+918:     activePopoverCell = null;
+919: });
+920: popover.addEventListener('click', (e) => {
+921:     e.stopPropagation();
+922: });
+923: 
+924: function renderUrls() {
+925:     const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
+926: 
+927:     quadrants.forEach(quad => {
+928:         const listDiv = urlsRoot.getElementById('list-' + quad);
+929:         listDiv.innerHTML = '';
+930: 
+931:         const table = document.createElement('table');
+932:         table.className = isEditMode ? 'edit-mode' : 'display-mode';
+933: 
+934:         for (let r = 0; r < 10; r++) {
+935:             const tr = document.createElement('tr');
+936:             for (let c = 0; c < 2; c++) {
+937:                 const td = document.createElement('td');
+938:                 const cellIndex = r * 2 + c;
+939:                 const item = myUrlsData[quad][cellIndex];
+940: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:07:56Z
+Completed At: 2026-06-27T00:07:59Z
+The following changes were made by the replace_file_content tool to: c:\Users\owner\Documents\Extension1\Extension1\content.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -925,6 +925,23 @@
+     const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
+ 
+     quadrants.forEach(quad => {
++        const titleEl = urlsRoot.getElementById('title-' + quad);
++        if (titleEl) {
++            titleEl.innerHTML = '';
++            if (isEditMode) {
++                const input = document.createElement('input');
++                input.className = 'title-input';
++                input.value = myUrlsData.titles[quad];
++                input.addEventListener('input', (e) => {
++                    myUrlsData.titles[quad] = e.target.value;
++                    saveUrls();
++                });
++                titleEl.appendChild(input);
++            } else {
++                titleEl.innerText = myUrlsData.titles[quad];
++            }
++        }
++
+         const listDiv = urlsRoot.getElementById('list-' + quad);
+         listDiv.innerHTML = '';
+ 
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+---
+
+### 🤖 Antigravity (AI)
+
+Created At: 2026-06-27T00:08:00Z
+Completed At: 2026-06-27T00:08:07Z
+
+				The command completed successfully.
+			Stdout:
+			
+			Stderr:
+
