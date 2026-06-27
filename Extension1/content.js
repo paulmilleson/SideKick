@@ -497,14 +497,13 @@ urlsRoot.innerHTML = `
     .q-media { background-color: #fce7f3; } /* pastel pink */
     .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
     .q-fun { background-color: #fef08a; } /* pastel yellow */
-    .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; color: #475569; }
+    .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; color: #475569; }
     .title-input {
         font-family: Verdana, sans-serif;
         font-size: 12px;
         font-weight: bold;
         text-align: center;
         margin: 0;
-        text-transform: uppercase;
         color: #475569;
         border: 1px solid #cbd5e1;
         background: white;
@@ -775,7 +774,12 @@ urlsRoot.innerHTML = `
 `;
 
 let myUrlsData = {
-    titles: { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
+    titles: {
+        Daily: { text: 'Daily', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' },
+        Media: { text: 'Media', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' },
+        Financial: { text: 'Financial', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' },
+        Fun: { text: 'Fun', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' }
+    },
     Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
     Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
     Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
@@ -815,8 +819,12 @@ paletteColors.forEach(color => {
     textBox.addEventListener('click', (e) => {
         e.stopPropagation();
         if (activePopoverCell) {
-            const { quad, index } = activePopoverCell;
-            myUrlsData[quad][index].fgColor = color;
+            if (activePopoverCell.isTitle) {
+                myUrlsData.titles[activePopoverCell.quad].fgColor = color;
+            } else {
+                const { quad, index } = activePopoverCell;
+                myUrlsData[quad][index].fgColor = color;
+            }
             saveUrls();
             renderUrls();
 
@@ -834,8 +842,12 @@ paletteColors.forEach(color => {
     bgBox.addEventListener('click', (e) => {
         e.stopPropagation();
         if (activePopoverCell) {
-            const { quad, index } = activePopoverCell;
-            myUrlsData[quad][index].bgColor = color;
+            if (activePopoverCell.isTitle) {
+                myUrlsData.titles[activePopoverCell.quad].bgColor = color;
+            } else {
+                const { quad, index } = activePopoverCell;
+                myUrlsData[quad][index].bgColor = color;
+            }
             saveUrls();
             renderUrls();
 
@@ -849,8 +861,12 @@ paletteColors.forEach(color => {
 // Setup popover controls listeners
 urlsRoot.getElementById('cell-bold-checkbox').addEventListener('change', (e) => {
     if (activePopoverCell) {
-        const { quad, index } = activePopoverCell;
-        myUrlsData[quad][index].fontWeight = e.target.checked ? 'bold' : 'normal';
+        if (activePopoverCell.isTitle) {
+            myUrlsData.titles[activePopoverCell.quad].fontWeight = e.target.checked ? 'bold' : 'normal';
+        } else {
+            const { quad, index } = activePopoverCell;
+            myUrlsData[quad][index].fontWeight = e.target.checked ? 'bold' : 'normal';
+        }
         saveUrls();
         renderUrls();
     }
@@ -858,8 +874,12 @@ urlsRoot.getElementById('cell-bold-checkbox').addEventListener('change', (e) => 
 
 urlsRoot.getElementById('cell-font-family').addEventListener('change', (e) => {
     if (activePopoverCell) {
-        const { quad, index } = activePopoverCell;
-        myUrlsData[quad][index].fontFamily = e.target.value;
+        if (activePopoverCell.isTitle) {
+            myUrlsData.titles[activePopoverCell.quad].fontFamily = e.target.value;
+        } else {
+            const { quad, index } = activePopoverCell;
+            myUrlsData[quad][index].fontFamily = e.target.value;
+        }
         e.target.style.fontFamily = e.target.value;
         saveUrls();
         renderUrls();
@@ -868,8 +888,12 @@ urlsRoot.getElementById('cell-font-family').addEventListener('change', (e) => {
 
 urlsRoot.getElementById('cell-font-size').addEventListener('change', (e) => {
     if (activePopoverCell) {
-        const { quad, index } = activePopoverCell;
-        myUrlsData[quad][index].fontSize = e.target.value;
+        if (activePopoverCell.isTitle) {
+            myUrlsData.titles[activePopoverCell.quad].fontSize = e.target.value;
+        } else {
+            const { quad, index } = activePopoverCell;
+            myUrlsData[quad][index].fontSize = e.target.value;
+        }
         e.target.style.fontSize = e.target.value;
         saveUrls();
         renderUrls();
@@ -879,25 +903,35 @@ urlsRoot.getElementById('cell-font-size').addEventListener('change', (e) => {
 urlsRoot.getElementById('btn-reset-cell').addEventListener('click', (e) => {
     e.stopPropagation();
     if (activePopoverCell) {
-        const { quad, index } = activePopoverCell;
-        myUrlsData[quad][index].bgColor = '';
-        myUrlsData[quad][index].fgColor = '';
-        myUrlsData[quad][index].fontWeight = 'normal';
-        myUrlsData[quad][index].fontFamily = 'Verdana, sans-serif';
-        myUrlsData[quad][index].fontSize = '10px';
+        if (activePopoverCell.isTitle) {
+            const { quad } = activePopoverCell;
+            myUrlsData.titles[quad].bgColor = '';
+            myUrlsData.titles[quad].fgColor = '';
+            myUrlsData.titles[quad].fontWeight = 'bold';
+            myUrlsData.titles[quad].fontFamily = 'Verdana, sans-serif';
+            myUrlsData.titles[quad].fontSize = '12px';
+        } else {
+            const { quad, index } = activePopoverCell;
+            myUrlsData[quad][index].bgColor = '';
+            myUrlsData[quad][index].fgColor = '';
+            myUrlsData[quad][index].fontWeight = 'normal';
+            myUrlsData[quad][index].fontFamily = 'Verdana, sans-serif';
+            myUrlsData[quad][index].fontSize = '10px';
+        }
         saveUrls();
         renderUrls();
 
         // Sync inputs
-        urlsRoot.getElementById('cell-bold-checkbox').checked = false;
+        const currentData = activePopoverCell.isTitle ? myUrlsData.titles[activePopoverCell.quad] : myUrlsData[activePopoverCell.quad][activePopoverCell.index];
+        urlsRoot.getElementById('cell-bold-checkbox').checked = currentData.fontWeight === 'bold';
         
         const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
-        fontFamilySelect.value = 'Verdana, sans-serif';
-        fontFamilySelect.style.fontFamily = 'Verdana, sans-serif';
+        fontFamilySelect.value = currentData.fontFamily || 'Verdana, sans-serif';
+        fontFamilySelect.style.fontFamily = fontFamilySelect.value;
         
         const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
-        fontSizeSelect.value = '10px';
-        fontSizeSelect.style.fontSize = '10px';
+        fontSizeSelect.value = currentData.fontSize || (activePopoverCell.isTitle ? '12px' : '10px');
+        fontSizeSelect.style.fontSize = fontSizeSelect.value;
 
         textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
         bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
@@ -927,17 +961,101 @@ function renderUrls() {
         const titleEl = urlsRoot.getElementById('title-' + quad);
         if (titleEl) {
             titleEl.innerHTML = '';
+            const tData = myUrlsData.titles[quad];
+            
+            // Apply styles to titleEl
+            titleEl.style.backgroundColor = tData.bgColor || '';
+            titleEl.style.color = tData.fgColor || '#475569';
+            titleEl.style.fontWeight = tData.fontWeight || 'bold';
+            titleEl.style.fontFamily = tData.fontFamily || 'Verdana, sans-serif';
+            titleEl.style.fontSize = tData.fontSize || '12px';
+            titleEl.style.borderRadius = tData.bgColor ? '4px' : '';
+            titleEl.style.padding = tData.bgColor ? '4px' : '0';
+
             if (isEditMode) {
+                // Clear titleEl outer styles in edit mode to avoid duplication with input styling
+                titleEl.style.backgroundColor = '';
+                titleEl.style.color = '';
+                titleEl.style.fontWeight = 'normal';
+                titleEl.style.padding = '0';
+                titleEl.style.borderRadius = '';
+
+                const container = document.createElement('div');
+                container.style.display = 'flex';
+                container.style.alignItems = 'center';
+                container.style.gap = '4px';
+                container.style.width = '100%';
+                container.style.position = 'relative';
+
                 const input = document.createElement('input');
                 input.className = 'title-input';
-                input.value = myUrlsData.titles[quad];
+                input.value = tData.text;
+                input.style.backgroundColor = tData.bgColor || 'white';
+                input.style.color = tData.fgColor || '#475569';
+                input.style.fontWeight = tData.fontWeight || 'bold';
+                input.style.fontFamily = tData.fontFamily || 'Verdana, sans-serif';
+                input.style.fontSize = tData.fontSize || '12px';
+
                 input.addEventListener('input', (e) => {
-                    myUrlsData.titles[quad] = e.target.value;
+                    myUrlsData.titles[quad].text = e.target.value;
                     saveUrls();
                 });
-                titleEl.appendChild(input);
+
+                const pickerBtn = document.createElement('button');
+                pickerBtn.className = 'btn-color-picker';
+                pickerBtn.style.position = 'static';
+                pickerBtn.style.transform = 'none';
+                pickerBtn.innerText = '🎨';
+                pickerBtn.title = 'Format Title';
+                pickerBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    activePopoverCell = { quad, isTitle: true };
+                    
+                    const rect = pickerBtn.getBoundingClientRect();
+                    const hostRect = urlsHost.getBoundingClientRect();
+                    
+                    let topPos = rect.bottom - hostRect.top;
+                    let leftPos = rect.left - hostRect.left - 130;
+                    
+                    if (leftPos < 10) leftPos = 10;
+                    if (topPos + 220 > hostRect.height) {
+                        topPos = rect.top - hostRect.top - 225;
+                    }
+                    
+                    // Sync popup controls with current title state
+                    urlsRoot.getElementById('cell-bold-checkbox').checked = tData.fontWeight === 'bold';
+                    
+                    const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
+                    fontFamilySelect.value = tData.fontFamily || 'Verdana, sans-serif';
+                    fontFamilySelect.style.fontFamily = fontFamilySelect.value;
+                    
+                    const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
+                    fontSizeSelect.value = tData.fontSize || '12px';
+                    fontSizeSelect.style.fontSize = fontSizeSelect.value;
+
+                    // Sync selected outlines in color grids
+                    textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+                    bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+
+                    if (tData.fgColor) {
+                        const selText = textGrid.querySelector(`.color-box[data-color="${tData.fgColor.toLowerCase()}"]`);
+                        if (selText) selText.classList.add('selected');
+                    }
+                    if (tData.bgColor) {
+                        const selBg = bgGrid.querySelector(`.color-box[data-color="${tData.bgColor.toLowerCase()}"]`);
+                        if (selBg) selBg.classList.add('selected');
+                    }
+                    
+                    popover.style.top = `${topPos}px`;
+                    popover.style.left = `${leftPos}px`;
+                    popover.style.display = 'block';
+                });
+
+                container.appendChild(input);
+                container.appendChild(pickerBtn);
+                titleEl.appendChild(container);
             } else {
-                titleEl.innerText = myUrlsData.titles[quad];
+                titleEl.innerText = tData.text;
             }
         }
 
@@ -1088,9 +1206,32 @@ function ensure20Cells(data) {
 
 // Load from storage
 chrome.storage.local.get(['myUrlsData'], (result) => {
+    const normalizeTitle = (titleVal, defaultText) => {
+        if (!titleVal) {
+            return { text: defaultText, bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' };
+        }
+        if (typeof titleVal === 'string') {
+            return { text: titleVal, bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' };
+        }
+        return {
+            text: titleVal.text || defaultText,
+            bgColor: titleVal.bgColor || '',
+            fgColor: titleVal.fgColor || '',
+            fontWeight: titleVal.fontWeight || 'bold',
+            fontFamily: titleVal.fontFamily || 'Verdana, sans-serif',
+            fontSize: titleVal.fontSize || '12px'
+        };
+    };
+
     if (result.myUrlsData) {
+        const loadedTitles = result.myUrlsData.titles || {};
         myUrlsData = {
-            titles: result.myUrlsData.titles || { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
+            titles: {
+                Daily: normalizeTitle(loadedTitles.Daily, 'Daily'),
+                Media: normalizeTitle(loadedTitles.Media, 'Media'),
+                Financial: normalizeTitle(loadedTitles.Financial, 'Financial'),
+                Fun: normalizeTitle(loadedTitles.Fun, 'Fun')
+            },
             Daily: ensure20Cells(result.myUrlsData.Daily),
             Media: ensure20Cells(result.myUrlsData.Media),
             Financial: ensure20Cells(result.myUrlsData.Financial),
@@ -1099,7 +1240,12 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
     } else {
         const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
         myUrlsData = {
-            titles: { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
+            titles: {
+                Daily: normalizeTitle(null, 'Daily'),
+                Media: normalizeTitle(null, 'Media'),
+                Financial: normalizeTitle(null, 'Financial'),
+                Fun: normalizeTitle(null, 'Fun')
+            },
             Daily: initQuad(),
             Media: initQuad(),
             Financial: initQuad(),
