@@ -693,10 +693,30 @@ urlsRoot.innerHTML = `
         z-index: 2;
         border-color: #1e293b;
     }
+    /* Drag Mode styles */
+    .drag-mode td {
+        border: 1px dashed #a7f3d0;
+        cursor: grab;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+    .drag-mode td:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+    }
+    .drag-mode td.drag-over {
+        border: 2px dashed #2563eb !important;
+        background-color: rgba(37, 99, 235, 0.15) !important;
+    }
+    .drag-mode td.drag-source {
+        opacity: 0.4;
+        border: 1px dashed #ef4444 !important;
+    }
 </style>
 <div class="header">
     <label>
         <input type="checkbox" id="mode-toggle"> Edit Mode
+    </label>
+    <label style="margin-left: 15px;">
+        <input type="checkbox" id="drag-toggle"> Drag Mode
     </label>
 </div>
 <div class="grid">
@@ -738,6 +758,7 @@ urlsRoot.innerHTML = `
                     <option value="Georgia, serif">Georgia</option>
                     <option value="Impact, sans-serif">Impact</option>
                     <option value="Times New Roman, serif">Times</option>
+                    <option value="'Comic Sans MS', 'Comic Sans', cursive">Comic Sans</option>
                 </select>
             </label>
         </div>
@@ -787,6 +808,7 @@ let myUrlsData = {
 };
 
 let isEditMode = false;
+let isDragMode = false;
 
 function saveUrls() {
     chrome.storage.local.set({ myUrlsData });
@@ -1065,7 +1087,13 @@ function renderUrls() {
         listDiv.innerHTML = '';
 
         const table = document.createElement('table');
-        table.className = isEditMode ? 'edit-mode' : 'display-mode';
+        if (isEditMode) {
+            table.className = 'edit-mode';
+        } else if (isDragMode) {
+            table.className = 'drag-mode';
+        } else {
+            table.className = 'display-mode';
+        }
 
         for (let r = 0; r < 10; r++) {
             const tr = document.createElement('tr');
@@ -1079,6 +1107,59 @@ function renderUrls() {
                 td.style.fontWeight = item.fontWeight || 'normal';
                 td.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
                 td.style.fontSize = item.fontSize || '10px';
+
+                td.setAttribute('data-quad', quad);
+                td.setAttribute('data-index', cellIndex.toString());
+
+                if (isDragMode) {
+                    if (item.name || item.url) {
+                        td.setAttribute('draggable', 'true');
+                        td.addEventListener('dragstart', (e) => {
+                            td.classList.add('drag-source');
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', JSON.stringify({ quad, index: cellIndex }));
+                        });
+                        td.addEventListener('dragend', () => {
+                            td.classList.remove('drag-source');
+                            urlsRoot.querySelectorAll('td').forEach(el => {
+                                el.classList.remove('drag-over');
+                                el.classList.remove('drag-source');
+                            });
+                        });
+                    }
+
+                    td.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        td.classList.add('drag-over');
+                    });
+
+                    td.addEventListener('dragleave', () => {
+                        td.classList.remove('drag-over');
+                    });
+
+                    td.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        td.classList.remove('drag-over');
+                        try {
+                            const sourceDataStr = e.dataTransfer.getData('text/plain');
+                            if (sourceDataStr) {
+                                const source = JSON.parse(sourceDataStr);
+                                const sourceQuad = source.quad;
+                                const sourceIndex = parseInt(source.index, 10);
+                                
+                                const temp = { ...myUrlsData[sourceQuad][sourceIndex] };
+                                myUrlsData[sourceQuad][sourceIndex] = { ...myUrlsData[quad][cellIndex] };
+                                myUrlsData[quad][cellIndex] = temp;
+
+                                saveUrls();
+                                renderUrls();
+                            }
+                        } catch (err) {
+                            console.error('Drag and drop error:', err);
+                        }
+                    });
+                }
 
                 if (isEditMode) {
                     const container = document.createElement('div');
@@ -1174,6 +1255,9 @@ function renderUrls() {
                         } else {
                             link.style.color = '#2563eb';
                         }
+                        if (isDragMode) {
+                            link.style.pointerEvents = 'none';
+                        }
                         td.appendChild(link);
                     }
                 }
@@ -1186,6 +1270,8 @@ function renderUrls() {
 
     const modeToggle = urlsRoot.getElementById('mode-toggle');
     modeToggle.checked = isEditMode;
+    const dragToggle = urlsRoot.getElementById('drag-toggle');
+    dragToggle.checked = isDragMode;
 }
 
 function ensure20Cells(data) {
@@ -1266,8 +1352,23 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
 
 // Mode Toggle
 const modeToggle = urlsRoot.getElementById('mode-toggle');
+const dragToggle = urlsRoot.getElementById('drag-toggle');
+
 modeToggle.addEventListener('change', (e) => {
     isEditMode = e.target.checked;
+    if (isEditMode) {
+        isDragMode = false;
+        dragToggle.checked = false;
+    }
+    renderUrls();
+});
+
+dragToggle.addEventListener('change', (e) => {
+    isDragMode = e.target.checked;
+    if (isDragMode) {
+        isEditMode = false;
+        modeToggle.checked = false;
+    }
     renderUrls();
 });
 
