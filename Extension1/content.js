@@ -667,6 +667,14 @@ urlsRoot.innerHTML = `
         color: #1e293b;
         cursor: pointer;
     }
+    .color-box.selected {
+        outline: 2px solid #2563eb;
+        outline-offset: 1px;
+        box-shadow: 0 0 4px rgba(37,99,235,0.6);
+        transform: scale(1.15);
+        z-index: 2;
+        border-color: #1e293b;
+    }
 </style>
 <div class="header">
     <label>
@@ -783,6 +791,7 @@ paletteColors.forEach(color => {
     const textBox = document.createElement('div');
     textBox.className = 'color-box';
     textBox.style.backgroundColor = color;
+    textBox.setAttribute('data-color', color.toLowerCase());
     textBox.addEventListener('click', (e) => {
         e.stopPropagation();
         if (activePopoverCell) {
@@ -790,6 +799,9 @@ paletteColors.forEach(color => {
             myUrlsData[quad][index].fgColor = color;
             saveUrls();
             renderUrls();
+
+            textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+            textBox.classList.add('selected');
         }
     });
     textGrid.appendChild(textBox);
@@ -798,6 +810,7 @@ paletteColors.forEach(color => {
     const bgBox = document.createElement('div');
     bgBox.className = 'color-box';
     bgBox.style.backgroundColor = color;
+    bgBox.setAttribute('data-color', color.toLowerCase());
     bgBox.addEventListener('click', (e) => {
         e.stopPropagation();
         if (activePopoverCell) {
@@ -805,6 +818,9 @@ paletteColors.forEach(color => {
             myUrlsData[quad][index].bgColor = color;
             saveUrls();
             renderUrls();
+
+            bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+            bgBox.classList.add('selected');
         }
     });
     bgGrid.appendChild(bgBox);
@@ -824,6 +840,7 @@ urlsRoot.getElementById('cell-font-family').addEventListener('change', (e) => {
     if (activePopoverCell) {
         const { quad, index } = activePopoverCell;
         myUrlsData[quad][index].fontFamily = e.target.value;
+        e.target.style.fontFamily = e.target.value;
         saveUrls();
         renderUrls();
     }
@@ -833,6 +850,7 @@ urlsRoot.getElementById('cell-font-size').addEventListener('change', (e) => {
     if (activePopoverCell) {
         const { quad, index } = activePopoverCell;
         myUrlsData[quad][index].fontSize = e.target.value;
+        e.target.style.fontSize = e.target.value;
         saveUrls();
         renderUrls();
     }
@@ -852,8 +870,17 @@ urlsRoot.getElementById('btn-reset-cell').addEventListener('click', (e) => {
 
         // Sync inputs
         urlsRoot.getElementById('cell-bold-checkbox').checked = false;
-        urlsRoot.getElementById('cell-font-family').value = 'Verdana, sans-serif';
-        urlsRoot.getElementById('cell-font-size').value = '10px';
+        
+        const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
+        fontFamilySelect.value = 'Verdana, sans-serif';
+        fontFamilySelect.style.fontFamily = 'Verdana, sans-serif';
+        
+        const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
+        fontSizeSelect.value = '10px';
+        fontSizeSelect.style.fontSize = '10px';
+
+        textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+        bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
     }
 });
 
@@ -941,8 +968,27 @@ function renderUrls() {
                         
                         // Sync popup controls with current cell state
                         urlsRoot.getElementById('cell-bold-checkbox').checked = item.fontWeight === 'bold';
-                        urlsRoot.getElementById('cell-font-family').value = item.fontFamily || 'Verdana, sans-serif';
-                        urlsRoot.getElementById('cell-font-size').value = item.fontSize || '10px';
+                        
+                        const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
+                        fontFamilySelect.value = item.fontFamily || 'Verdana, sans-serif';
+                        fontFamilySelect.style.fontFamily = fontFamilySelect.value;
+                        
+                        const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
+                        fontSizeSelect.value = item.fontSize || '10px';
+                        fontSizeSelect.style.fontSize = fontSizeSelect.value;
+
+                        // Sync selected outlines in color grids
+                        textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+                        bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+
+                        if (item.fgColor) {
+                            const selText = textGrid.querySelector(`.color-box[data-color="${item.fgColor.toLowerCase()}"]`);
+                            if (selText) selText.classList.add('selected');
+                        }
+                        if (item.bgColor) {
+                            const selBg = bgGrid.querySelector(`.color-box[data-color="${item.bgColor.toLowerCase()}"]`);
+                            if (selBg) selBg.classList.add('selected');
+                        }
                         
                         popover.style.top = `${topPos}px`;
                         popover.style.left = `${leftPos}px`;
