@@ -1018,7 +1018,7 @@ function renderUrls() {
                     let leftPos = rect.left - hostRect.left - 130;
                     
                     if (leftPos < 10) leftPos = 10;
-                    const popoverHeight = 330;
+                    const popoverHeight = 420;
                     if (topPos + popoverHeight > hostRect.height) {
                         topPos = hostRect.height - popoverHeight - 10;
                     }
@@ -1119,7 +1119,7 @@ function renderUrls() {
                         let leftPos = rect.left - hostRect.left - 130;
                         
                         if (leftPos < 10) leftPos = 10;
-                        const popoverHeight = 330;
+                        const popoverHeight = 420;
                         if (topPos + popoverHeight > hostRect.height) {
                             topPos = hostRect.height - popoverHeight - 10;
                         }
