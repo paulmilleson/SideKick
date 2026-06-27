@@ -506,17 +506,16 @@ urlsRoot.innerHTML = `
         margin: 0;
         text-transform: uppercase;
         color: #475569;
-        border: 1px dashed #cbd5e1;
-        background: transparent;
+        border: 1px solid #cbd5e1;
+        background: white;
         border-radius: 4px;
         width: 100%;
         box-sizing: border-box;
-        padding: 2px;
+        padding: 4px;
     }
     .title-input:focus {
         border-color: #3b82f6;
         outline: none;
-        background: white;
     }
     
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
