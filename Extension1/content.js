@@ -498,6 +498,26 @@ urlsRoot.innerHTML = `
     .q-financial { background-color: #bae6fd; } /* pastel blue (darkened) */
     .q-fun { background-color: #fef08a; } /* pastel yellow */
     .title { font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 8px; text-transform: uppercase; color: #475569; }
+    .title-input {
+        font-family: Verdana, sans-serif;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        margin: 0;
+        text-transform: uppercase;
+        color: #475569;
+        border: 1px dashed #cbd5e1;
+        background: transparent;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 2px;
+    }
+    .title-input:focus {
+        border-color: #3b82f6;
+        outline: none;
+        background: white;
+    }
     
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     td {
@@ -683,19 +703,19 @@ urlsRoot.innerHTML = `
 </div>
 <div class="grid">
     <div class="quadrant q-daily">
-        <h2 class="title">Daily</h2>
+        <h2 class="title" id="title-Daily">Daily</h2>
         <div id="list-Daily"></div>
     </div>
     <div class="quadrant q-media">
-        <h2 class="title">Media</h2>
+        <h2 class="title" id="title-Media">Media</h2>
         <div id="list-Media"></div>
     </div>
     <div class="quadrant q-financial">
-        <h2 class="title">Financial</h2>
+        <h2 class="title" id="title-Financial">Financial</h2>
         <div id="list-Financial"></div>
     </div>
     <div class="quadrant q-fun">
-        <h2 class="title">Fun</h2>
+        <h2 class="title" id="title-Fun">Fun</h2>
         <div id="list-Fun"></div>
     </div>
 </div>
@@ -756,6 +776,7 @@ urlsRoot.innerHTML = `
 `;
 
 let myUrlsData = {
+    titles: { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
     Daily: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
     Media: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
     Financial: Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' })),
@@ -904,6 +925,23 @@ function renderUrls() {
     const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
 
     quadrants.forEach(quad => {
+        const titleEl = urlsRoot.getElementById('title-' + quad);
+        if (titleEl) {
+            titleEl.innerHTML = '';
+            if (isEditMode) {
+                const input = document.createElement('input');
+                input.className = 'title-input';
+                input.value = myUrlsData.titles[quad];
+                input.addEventListener('input', (e) => {
+                    myUrlsData.titles[quad] = e.target.value;
+                    saveUrls();
+                });
+                titleEl.appendChild(input);
+            } else {
+                titleEl.innerText = myUrlsData.titles[quad];
+            }
+        }
+
         const listDiv = urlsRoot.getElementById('list-' + quad);
         listDiv.innerHTML = '';
 
@@ -1053,6 +1091,7 @@ function ensure20Cells(data) {
 chrome.storage.local.get(['myUrlsData'], (result) => {
     if (result.myUrlsData) {
         myUrlsData = {
+            titles: result.myUrlsData.titles || { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
             Daily: ensure20Cells(result.myUrlsData.Daily),
             Media: ensure20Cells(result.myUrlsData.Media),
             Financial: ensure20Cells(result.myUrlsData.Financial),
@@ -1061,6 +1100,7 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
     } else {
         const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
         myUrlsData = {
+            titles: { Daily: 'Daily', Media: 'Media', Financial: 'Financial', Fun: 'Fun' },
             Daily: initQuad(),
             Media: initQuad(),
             Financial: initQuad(),
