@@ -1018,9 +1018,11 @@ function renderUrls() {
                     let leftPos = rect.left - hostRect.left - 130;
                     
                     if (leftPos < 10) leftPos = 10;
-                    if (topPos + 220 > hostRect.height) {
-                        topPos = rect.top - hostRect.top - 225;
+                    const popoverHeight = 330;
+                    if (topPos + popoverHeight > hostRect.height) {
+                        topPos = hostRect.height - popoverHeight - 10;
                     }
+                    if (topPos < 10) topPos = 10;
                     
                     // Sync popup controls with current title state
                     urlsRoot.getElementById('cell-bold-checkbox').checked = tData.fontWeight === 'bold';
@@ -1117,9 +1119,11 @@ function renderUrls() {
                         let leftPos = rect.left - hostRect.left - 130;
                         
                         if (leftPos < 10) leftPos = 10;
-                        if (topPos + 220 > hostRect.height) {
-                            topPos = rect.top - hostRect.top - 225;
+                        const popoverHeight = 330;
+                        if (topPos + popoverHeight > hostRect.height) {
+                            topPos = hostRect.height - popoverHeight - 10;
                         }
+                        if (topPos < 10) topPos = 10;
                         
                         // Sync popup controls with current cell state
                         urlsRoot.getElementById('cell-bold-checkbox').checked = item.fontWeight === 'bold';
