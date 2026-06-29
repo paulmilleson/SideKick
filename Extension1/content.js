@@ -1148,9 +1148,43 @@ function renderUrls() {
                                 const sourceQuad = source.quad;
                                 const sourceIndex = parseInt(source.index, 10);
                                 
-                                const temp = { ...myUrlsData[sourceQuad][sourceIndex] };
-                                myUrlsData[sourceQuad][sourceIndex] = { ...myUrlsData[quad][cellIndex] };
-                                myUrlsData[quad][cellIndex] = temp;
+                                const itemA = { ...myUrlsData[sourceQuad][sourceIndex] };
+                                const itemB = { ...myUrlsData[quad][cellIndex] };
+                                
+                                const isOccupied = (item) => !!(item.name || item.url);
+                                
+                                if (isOccupied(itemB)) {
+                                    const targetEmptyIndices = [];
+                                    for (let i = 0; i < 20; i++) {
+                                        if (quad === sourceQuad && i === sourceIndex) {
+                                            continue;
+                                        }
+                                        if (!isOccupied(myUrlsData[quad][i])) {
+                                            targetEmptyIndices.push(i);
+                                        }
+                                    }
+                                    
+                                    if (targetEmptyIndices.length > 0) {
+                                        const getDistance = (idx1, idx2) => {
+                                            const r1 = Math.floor(idx1 / 2), c1 = idx1 % 2;
+                                            const r2 = Math.floor(idx2 / 2), c2 = idx2 % 2;
+                                            return Math.abs(r1 - r2) + Math.abs(c1 - c2);
+                                        };
+                                        
+                                        targetEmptyIndices.sort((x, y) => getDistance(x, cellIndex) - getDistance(y, cellIndex));
+                                        const closestEmptyIndex = targetEmptyIndices[0];
+                                        
+                                        myUrlsData[quad][closestEmptyIndex] = itemB;
+                                        myUrlsData[quad][cellIndex] = itemA;
+                                        myUrlsData[sourceQuad][sourceIndex] = { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+                                    } else {
+                                        myUrlsData[sourceQuad][sourceIndex] = itemB;
+                                        myUrlsData[quad][cellIndex] = itemA;
+                                    }
+                                } else {
+                                    myUrlsData[quad][cellIndex] = itemA;
+                                    myUrlsData[sourceQuad][sourceIndex] = { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+                                }
 
                                 saveUrls();
                                 renderUrls();
