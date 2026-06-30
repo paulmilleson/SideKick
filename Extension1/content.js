@@ -1,6 +1,6 @@
 // content.js
 // Declare all host panels globally so they are accessible to repositionButtonAndPanels
-let calcHost, navPanel, tetrisHost, urlsHost;
+let calcHost, navPanel, tetrisHost, urlsHost, notesHost;
 
 // 1. Create the floating button
 const floatingButton = document.createElement('button');
@@ -71,7 +71,8 @@ function repositionButtonAndPanels(left, top) {
         { el: navPanel, width: 200, height: 250 },
         { el: calcHost, width: 320, height: 480 },
         { el: tetrisHost, width: 480, height: 820 },
-        { el: urlsHost, width: 768, height: 576 }
+        { el: urlsHost, width: 768, height: 576 },
+        { el: notesHost, width: 768, height: 576 }
     ];
 
     hostsConfig.forEach(config => {
@@ -245,6 +246,11 @@ buttonsData.forEach(data => {
         btn.addEventListener('click', () => {
             navPanel.style.display = 'none';
             urlsHost.style.display = 'block';
+        });
+    } else if (data.text === 'My Notes') {
+        btn.addEventListener('click', () => {
+            navPanel.style.display = 'none';
+            notesHost.style.display = 'block';
         });
     }
 
@@ -832,6 +838,391 @@ let isSmallBoxMode = false;
 function saveUrls() {
     chrome.storage.local.set({ myUrlsData });
 }
+
+// --- MY NOTES PANEL (Option 3) ---
+notesHost = document.createElement('div');
+notesHost.id = 'floating-notes-host';
+Object.assign(notesHost.style, {
+    position: 'fixed', bottom: '90px', right: '20px', width: '768px', height: '576px',
+    zIndex: '2147483647', display: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+    borderRadius: '16px', overflow: 'hidden', backgroundColor: '#f1f5f9'
+});
+const notesRoot = notesHost.attachShadow({ mode: 'open' });
+
+notesRoot.innerHTML = `
+<style>
+    :host {
+        display: block; width: 100%; height: 100%; background: #f1f5f9; color: #1e293b;
+        font-family: system-ui, -apple-system, sans-serif; box-sizing: border-box; position: relative;
+    }
+    * { box-sizing: inherit; }
+    .notes-container { display: flex; flex-direction: column; height: 100%; }
+    .header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; border-bottom: 1px solid #cbd5e1; gap: 8px; }
+    
+    .doc-management { display: flex; align-items: center; gap: 6px; }
+    .doc-select { font-size: 12px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-weight: bold; cursor: pointer; max-width: 150px; }
+    .header-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+    .header-btn:hover { background: #cbd5e1; }
+    
+    .doc-title-input { font-size: 14px; font-weight: bold; border: 1px solid transparent; padding: 4px 8px; border-radius: 4px; width: 180px; font-family: inherit; }
+    .doc-title-input:hover { border-color: #cbd5e1; }
+    .doc-title-input:focus { border-color: #2563eb; outline: none; background: #fff; }
+    
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    .theme-select { font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer; }
+    
+    .toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; align-items: center; }
+    .toolbar-group { display: flex; align-items: center; gap: 2px; border-right: 1px solid #cbd5e1; padding-right: 4px; margin-right: 2px; }
+    .toolbar-btn { background: transparent; border: none; padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 13px; display: flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; color: #475569; }
+    .toolbar-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .toolbar-btn.active { background: #cbd5e1; color: #0f172a; }
+    
+    .toolbar-select { font-size: 11px; padding: 2px 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer; }
+    
+    .editor-wrapper { flex: 1; overflow-y: auto; padding: 20px; display: flex; justify-content: center; transition: background 0.2s; }
+    .editor-page {
+        width: 100%; max-width: 700px; min-height: 420px; background: #ffffff; padding: 40px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        outline: none; box-sizing: border-box; border-radius: 2px; line-height: 1.6; font-size: 14px;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    
+    .footer { padding: 4px 12px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; border-top: 1px solid #cbd5e1; font-size: 11px; color: #64748b; }
+
+    /* Theme Styles */
+    .theme-light .editor-wrapper { background: #f1f5f9; }
+    .theme-light .editor-page { background: #ffffff; color: #1e293b; }
+    
+    .theme-dark .editor-wrapper { background: #0f172a; }
+    .theme-dark .editor-page { background: #1e293b; color: #f8fafc; }
+    
+    .theme-sepia .editor-wrapper { background: #fcf6e8; }
+    .theme-sepia .editor-page { background: #f4ecd8; color: #433422; }
+    
+    .theme-ocean .editor-wrapper { background: #e0f2fe; }
+    .theme-ocean .editor-page { background: #ffffff; color: #0369a1; }
+</style>
+<div class="notes-container theme-light" id="notes-container">
+    <div class="header">
+        <div class="doc-management">
+            <select class="doc-select" id="doc-select" title="Select Note"></select>
+            <button class="header-btn" id="btn-new-note" title="New Note">➕</button>
+            <button class="header-btn" id="btn-delete-note" title="Delete Current Note">🗑️</button>
+        </div>
+        
+        <input type="text" class="doc-title-input" id="doc-title-input" value="Untitled Document" placeholder="Document Title">
+        
+        <div class="header-actions">
+            <select class="theme-select" id="theme-select" title="Select Theme">
+                <option value="light">☀️ Light</option>
+                <option value="dark">🌙 Dark</option>
+                <option value="sepia">📜 Sepia</option>
+                <option value="ocean">🌊 Ocean</option>
+            </select>
+            <button class="header-btn" id="btn-share-email" title="Email Document">✉️ Email</button>
+            <button class="header-btn" id="btn-share-clipboard" title="Copy to Clipboard">📋 Copy</button>
+            <button class="header-btn" id="btn-export-html" title="Download HTML">💾 Export</button>
+            <a href="#" id="link-close-notes" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: bold; margin-left: 8px;">Close</a>
+        </div>
+    </div>
+    
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <select class="toolbar-select" id="font-family-select" title="Font Family">
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="Courier New, monospace">Courier</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Impact, sans-serif">Impact</option>
+                <option value="Times New Roman, serif">Times</option>
+                <option value="'Comic Sans MS', 'Comic Sans', cursive">Comic Sans</option>
+            </select>
+            <select class="toolbar-select" id="font-size-select" title="Font Size">
+                <option value="3">12px</option>
+                <option value="1">8px</option>
+                <option value="2">10px</option>
+                <option value="4">14px</option>
+                <option value="5">18px</option>
+                <option value="6">24px</option>
+                <option value="7">36px</option>
+            </select>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="toolbar-btn" id="btn-bold" title="Bold" data-cmd="bold"><b>B</b></button>
+            <button class="toolbar-btn" id="btn-italic" title="Italic" data-cmd="italic"><i>I</i></button>
+            <button class="toolbar-btn" id="btn-underline" title="Underline" data-cmd="underline"><u>U</u></button>
+            <button class="toolbar-btn" id="btn-strike" title="Strikethrough" data-cmd="strikeThrough"><s>S</s></button>
+        </div>
+        
+        <div class="toolbar-group" style="gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 2px;">
+                <span style="font-size: 11px; font-weight: bold; color: #64748b;">A</span>
+                <input type="color" id="note-fg-color" title="Text Color" style="width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0; background: transparent;" value="#1e293b">
+            </div>
+            <div style="display: flex; align-items: center; gap: 2px;">
+                <span style="font-size: 11px; font-weight: bold; color: #64748b;">✏️</span>
+                <input type="color" id="note-bg-color" title="Highlight Color" style="width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0; background: transparent;" value="#ffffff">
+            </div>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="toolbar-btn" id="btn-align-left" title="Align Left" data-cmd="justifyLeft"> Align L</button>
+            <button class="toolbar-btn" id="btn-align-center" title="Align Center" data-cmd="justifyCenter"> Align C</button>
+            <button class="toolbar-btn" id="btn-align-right" title="Align Right" data-cmd="justifyRight"> Align R</button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="toolbar-btn" id="btn-list-bullet" title="Bulleted List" data-cmd="insertUnorderedList">• List</button>
+            <button class="toolbar-btn" id="btn-list-number" title="Numbered List" data-cmd="insertOrderedList">1. List</button>
+        </div>
+        
+        <button class="toolbar-btn" id="btn-clear-format" title="Clear Formatting" data-cmd="removeFormat">Tx</button>
+    </div>
+    
+    <div class="editor-wrapper" id="editor-wrapper">
+        <div class="editor-page" id="editor-page" contenteditable="true">
+            <div>Start writing your notes here...</div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div>Words: <span id="word-count">0</span> | Characters: <span id="char-count">0</span></div>
+        <div id="save-status">All changes saved locally</div>
+    </div>
+</div>
+`;
+
+let myNotesData = {
+    currentNoteId: '',
+    notes: {}
+};
+
+let autoSaveTimeout = null;
+
+function saveNotes() {
+    chrome.storage.local.set({ myNotesData });
+    const status = notesRoot.getElementById('save-status');
+    if (status) status.innerText = 'All changes saved locally';
+}
+
+function triggerAutoSave() {
+    const status = notesRoot.getElementById('save-status');
+    if (status) status.innerText = 'Saving...';
+    
+    if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+        const curId = myNotesData.currentNoteId;
+        if (curId && myNotesData.notes[curId]) {
+            myNotesData.notes[curId].title = notesRoot.getElementById('doc-title-input').value;
+            myNotesData.notes[curId].content = notesRoot.getElementById('editor-page').innerHTML;
+            myNotesData.notes[curId].theme = notesRoot.getElementById('theme-select').value;
+            myNotesData.notes[curId].lastModified = Date.now();
+        }
+        saveNotes();
+        updateNoteSelectDropdown();
+    }, 1000);
+}
+
+function createBlankNote(title = 'Untitled Note') {
+    const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    myNotesData.notes[id] = {
+        id,
+        title,
+        content: '<div>Start writing your notes here...</div>',
+        theme: 'light',
+        lastModified: Date.now()
+    };
+    myNotesData.currentNoteId = id;
+    saveNotes();
+    loadNote(id);
+    updateNoteSelectDropdown();
+}
+
+function loadNote(id) {
+    if (!id || !myNotesData.notes[id]) return;
+    myNotesData.currentNoteId = id;
+    
+    const note = myNotesData.notes[id];
+    notesRoot.getElementById('doc-title-input').value = note.title;
+    notesRoot.getElementById('editor-page').innerHTML = note.content;
+    notesRoot.getElementById('theme-select').value = note.theme || 'light';
+    
+    // Apply theme CSS class
+    const container = notesRoot.getElementById('notes-container');
+    container.className = `notes-container theme-${note.theme || 'light'}`;
+    
+    updateWordAndCharCount();
+}
+
+function updateNoteSelectDropdown() {
+    const select = notesRoot.getElementById('doc-select');
+    if (!select) return;
+    select.innerHTML = '';
+    
+    Object.keys(myNotesData.notes).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.innerText = myNotesData.notes[id].title || 'Untitled Note';
+        select.appendChild(opt);
+    });
+    
+    select.value = myNotesData.currentNoteId;
+}
+
+function updateWordAndCharCount() {
+    const page = notesRoot.getElementById('editor-page');
+    if (!page) return;
+    const text = page.innerText || '';
+    const charCount = text.length;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    
+    notesRoot.getElementById('word-count').innerText = wordCount;
+    notesRoot.getElementById('char-count').innerText = charCount;
+}
+
+// Attach event listeners
+notesRoot.getElementById('btn-new-note').addEventListener('click', () => {
+    createBlankNote();
+});
+
+notesRoot.getElementById('btn-delete-note').addEventListener('click', () => {
+    const curId = myNotesData.currentNoteId;
+    if (!curId) return;
+    
+    if (Object.keys(myNotesData.notes).length <= 1) {
+        if (confirm('Delete this note? It is your last note, a new blank note will be created.')) {
+            delete myNotesData.notes[curId];
+            createBlankNote();
+        }
+        return;
+    }
+    
+    if (confirm('Are you sure you want to delete this note?')) {
+        delete myNotesData.notes[curId];
+        const nextId = Object.keys(myNotesData.notes)[0];
+        myNotesData.currentNoteId = nextId;
+        saveNotes();
+        loadNote(nextId);
+        updateNoteSelectDropdown();
+    }
+});
+
+notesRoot.getElementById('doc-select').addEventListener('change', (e) => {
+    loadNote(e.target.value);
+});
+
+notesRoot.getElementById('doc-title-input').addEventListener('input', () => {
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('editor-page').addEventListener('input', () => {
+    updateWordAndCharCount();
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('theme-select').addEventListener('change', (e) => {
+    const theme = e.target.value;
+    const container = notesRoot.getElementById('notes-container');
+    container.className = `notes-container theme-${theme}`;
+    triggerAutoSave();
+});
+
+// Format actions listeners
+notesRoot.querySelectorAll('.toolbar-btn[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cmd = btn.dataset.cmd;
+        document.execCommand(cmd, false, null);
+        notesRoot.getElementById('editor-page').focus();
+        triggerAutoSave();
+    });
+});
+
+notesRoot.getElementById('font-family-select').addEventListener('change', (e) => {
+    document.execCommand('fontName', false, e.target.value);
+    notesRoot.getElementById('editor-page').focus();
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('font-size-select').addEventListener('change', (e) => {
+    document.execCommand('fontSize', false, e.target.value);
+    notesRoot.getElementById('editor-page').focus();
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('note-fg-color').addEventListener('input', (e) => {
+    document.execCommand('foreColor', false, e.target.value);
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('note-bg-color').addEventListener('input', (e) => {
+    document.execCommand('hiliteColor', false, e.target.value);
+    triggerAutoSave();
+});
+
+// Export HTML
+notesRoot.getElementById('btn-export-html').addEventListener('click', () => {
+    const curId = myNotesData.currentNoteId;
+    if (!curId || !myNotesData.notes[curId]) return;
+    const note = myNotesData.notes[curId];
+    const blob = new Blob([note.content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${note.title || 'Note'}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+// Email notes
+notesRoot.getElementById('btn-share-email').addEventListener('click', () => {
+    const curId = myNotesData.currentNoteId;
+    if (!curId || !myNotesData.notes[curId]) return;
+    const note = myNotesData.notes[curId];
+    const subject = encodeURIComponent(note.title);
+    const body = encodeURIComponent(notesRoot.getElementById('editor-page').innerText);
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+});
+
+// Copy to clipboard
+notesRoot.getElementById('btn-share-clipboard').addEventListener('click', () => {
+    const page = notesRoot.getElementById('editor-page');
+    if (!page) return;
+    try {
+        const text = page.innerText;
+        const html = page.innerHTML;
+        const blobHTML = new Blob([html], { type: 'text/html' });
+        const blobText = new Blob([text], { type: 'text/plain' });
+        const data = [new ClipboardItem({ 'text/html': blobHTML, 'text/plain': blobText })];
+        navigator.clipboard.write(data).then(() => {
+            alert('Rich text copied to clipboard!');
+        });
+    } catch (e) {
+        navigator.clipboard.writeText(page.innerText).then(() => {
+            alert('Plain text copied to clipboard!');
+        });
+    }
+});
+
+notesRoot.getElementById('link-close-notes').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    notesHost.style.display = 'none';
+    navPanel.style.display = 'flex';
+});
+
+// Load storage notes
+chrome.storage.local.get(['myNotesData'], (result) => {
+    if (result.myNotesData && result.myNotesData.notes && Object.keys(result.myNotesData.notes).length > 0) {
+        myNotesData = result.myNotesData;
+        loadNote(myNotesData.currentNoteId || Object.keys(myNotesData.notes)[0]);
+        updateNoteSelectDropdown();
+    } else {
+        createBlankNote('Welcome to My Notes');
+    }
+});
 
 const paletteColors = [
     // Grayscale
@@ -1466,6 +1857,7 @@ document.body.appendChild(navPanel);
 document.body.appendChild(calcHost);
 document.body.appendChild(tetrisHost);
 document.body.appendChild(urlsHost);
+document.body.appendChild(notesHost);
 
 // Toggle visibility
 floatingButton.addEventListener('click', () => {
@@ -1610,6 +2002,7 @@ document.addEventListener('keydown', (e) => {
             navPanel.style.display = 'none';
             tetrisHost.style.display = 'none';
             urlsHost.style.display = 'none';
+            notesHost.style.display = 'none';
         } else {
             floatingButton.style.display = 'flex';
         }
@@ -1633,6 +2026,11 @@ document.addEventListener('keydown', (e) => {
         } else if (urlsHost.style.display === 'block') {
             // If urls panel is open, return to nav panel
             urlsHost.style.display = 'none';
+            navPanel.style.display = 'flex';
+            return;
+        } else if (notesHost.style.display === 'block') {
+            // If notes panel is open, return to nav panel
+            notesHost.style.display = 'none';
             navPanel.style.display = 'flex';
             return;
         } else if (navPanel.style.display === 'flex') {
