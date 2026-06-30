@@ -985,7 +985,7 @@ notesRoot.innerHTML = `
                 <option value="sepia">📜 Sepia</option>
                 <option value="ocean">🌊 Ocean</option>
             </select>
-            <button class="header-btn" id="btn-share-email" title="Email Document">✉️ Email</button>
+            <button class="header-btn" id="btn-print-note" title="Print Document">🖨️ Print</button>
             <button class="header-btn" id="btn-share-clipboard" title="Copy to Clipboard">📋 Copy</button>
             <button class="header-btn" id="btn-export-html" title="Download HTML">💾 Export</button>
             <a href="#" id="link-close-notes" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: bold; margin-left: 8px;">Close</a>
@@ -1301,18 +1301,56 @@ notesRoot.getElementById('btn-export-html').addEventListener('click', () => {
     URL.revokeObjectURL(url);
 });
 
-// Email notes
-notesRoot.getElementById('btn-share-email').addEventListener('click', () => {
+// Print document
+notesRoot.getElementById('btn-print-note').addEventListener('click', () => {
     const curId = myNotesData.currentNoteId;
     if (!curId || !myNotesData.notes[curId]) return;
     const note = myNotesData.notes[curId];
-    const subject = encodeURIComponent(note.title);
-    const body = encodeURIComponent(notesRoot.getElementById('editor-page').innerText);
     
-    // Create temporary link and click it without target="_blank"
-    const mailLink = document.createElement('a');
-    mailLink.href = `mailto:?subject=${subject}&body=${body}`;
-    mailLink.click();
+    // Create a hidden iframe to isolate the printable document styles
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+        <html>
+        <head>
+            <title>${note.title || 'Document'}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 40px;
+                    line-height: 1.6;
+                    font-size: 14px;
+                    color: #1e293b;
+                }
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${note.content}
+        </body>
+        </html>
+    `);
+    doc.close();
+    
+    // Focus and print the iframe window
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    
+    // Clean up
+    setTimeout(() => {
+        document.body.removeChild(iframe);
+    }, 1000);
 });
 
 // Copy to clipboard
