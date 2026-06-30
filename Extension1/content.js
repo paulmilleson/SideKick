@@ -859,17 +859,86 @@ notesRoot.innerHTML = `
     .notes-container { display: flex; flex-direction: column; height: 100%; }
     .header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; border-bottom: 1px solid #cbd5e1; gap: 8px; }
     
-    .doc-management { display: flex; align-items: center; gap: 6px; }
-    .doc-select { font-size: 12px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; font-weight: bold; cursor: pointer; max-width: 150px; }
-    .header-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-    .header-btn:hover { background: #cbd5e1; }
-    
-    .doc-title-input { font-size: 14px; font-weight: bold; border: 1px solid transparent; padding: 4px 8px; border-radius: 4px; width: 180px; font-family: inherit; }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .doc-title-input { font-size: 14px; font-weight: bold; border: 1px solid transparent; padding: 4px 8px; border-radius: 4px; width: 220px; font-family: inherit; }
     .doc-title-input:hover { border-color: #cbd5e1; }
     .doc-title-input:focus { border-color: #2563eb; outline: none; background: #fff; }
     
     .header-actions { display: flex; align-items: center; gap: 6px; }
     .theme-select { font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; background: white; cursor: pointer; }
+    .header-btn { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+    .header-btn:hover { background: #cbd5e1; }
+
+    /* Main Layout with Sidebar File Manager */
+    .notes-main-layout { display: flex; flex: 1; overflow: hidden; }
+    
+    .notes-sidebar {
+        width: 200px;
+        background: #f8fafc;
+        border-right: 1px solid #cbd5e1;
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        gap: 12px;
+        overflow-y: auto;
+    }
+    
+    .new-doc-btn {
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 13px;
+        text-align: center;
+        transition: background 0.15s;
+    }
+    .new-doc-btn:hover { background: #1d4ed8; }
+    
+    .notes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .note-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+    .note-item:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .note-item.active { background: #e2e8f0; border-color: #94a3b8; }
+    
+    .note-item-info { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow: hidden; }
+    .note-item-title { font-size: 12px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b; }
+    .note-item-date { font-size: 10px; color: #64748b; }
+    
+    .note-item-delete {
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s, background 0.15s;
+    }
+    .note-item-delete:hover { color: #ef4444; background: #fee2e2; }
+    
+    .notes-editor-area { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
     
     .toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 12px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; align-items: center; }
     .toolbar-group { display: flex; align-items: center; gap: 2px; border-right: 1px solid #cbd5e1; padding-right: 4px; margin-right: 2px; }
@@ -904,13 +973,10 @@ notesRoot.innerHTML = `
 </style>
 <div class="notes-container theme-light" id="notes-container">
     <div class="header">
-        <div class="doc-management">
-            <select class="doc-select" id="doc-select" title="Select Note"></select>
-            <button class="header-btn" id="btn-new-note" title="New Note">➕</button>
-            <button class="header-btn" id="btn-delete-note" title="Delete Current Note">🗑️</button>
+        <div class="header-left">
+            <span style="font-size: 14px; font-weight: bold; color: #475569;">📄 My Notes</span>
+            <input type="text" class="doc-title-input" id="doc-title-input" value="Untitled Document" placeholder="Document Title">
         </div>
-        
-        <input type="text" class="doc-title-input" id="doc-title-input" value="Untitled Document" placeholder="Document Title">
         
         <div class="header-actions">
             <select class="theme-select" id="theme-select" title="Select Theme">
@@ -926,69 +992,80 @@ notesRoot.innerHTML = `
         </div>
     </div>
     
-    <div class="toolbar">
-        <div class="toolbar-group">
-            <select class="toolbar-select" id="font-family-select" title="Font Family">
-                <option value="Arial, sans-serif">Arial</option>
-                <option value="Verdana, sans-serif">Verdana</option>
-                <option value="Courier New, monospace">Courier</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="Impact, sans-serif">Impact</option>
-                <option value="Times New Roman, serif">Times</option>
-                <option value="'Comic Sans MS', 'Comic Sans', cursive">Comic Sans</option>
-            </select>
-            <select class="toolbar-select" id="font-size-select" title="Font Size">
-                <option value="3">12px</option>
-                <option value="1">8px</option>
-                <option value="2">10px</option>
-                <option value="4">14px</option>
-                <option value="5">18px</option>
-                <option value="6">24px</option>
-                <option value="7">36px</option>
-            </select>
+    <div class="notes-main-layout">
+        <!-- Sidebar File Manager -->
+        <div class="notes-sidebar">
+            <button class="new-doc-btn" id="btn-new-note-sidebar">+ New Note</button>
+            <div class="notes-list" id="notes-list"></div>
         </div>
         
-        <div class="toolbar-group">
-            <button class="toolbar-btn" id="btn-bold" title="Bold" data-cmd="bold"><b>B</b></button>
-            <button class="toolbar-btn" id="btn-italic" title="Italic" data-cmd="italic"><i>I</i></button>
-            <button class="toolbar-btn" id="btn-underline" title="Underline" data-cmd="underline"><u>U</u></button>
-            <button class="toolbar-btn" id="btn-strike" title="Strikethrough" data-cmd="strikeThrough"><s>S</s></button>
-        </div>
-        
-        <div class="toolbar-group" style="gap: 6px;">
-            <div style="display: flex; align-items: center; gap: 2px;">
-                <span style="font-size: 11px; font-weight: bold; color: #64748b;">A</span>
-                <input type="color" id="note-fg-color" title="Text Color" style="width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0; background: transparent;" value="#1e293b">
+        <!-- Editor Area -->
+        <div class="notes-editor-area">
+            <div class="toolbar">
+                <div class="toolbar-group">
+                    <select class="toolbar-select" id="font-family-select" title="Font Family">
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Courier New, monospace">Courier</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="Impact, sans-serif">Impact</option>
+                        <option value="Times New Roman, serif">Times</option>
+                        <option value="'Comic Sans MS', 'Comic Sans', cursive">Comic Sans</option>
+                    </select>
+                    <select class="toolbar-select" id="font-size-select" title="Font Size">
+                        <option value="3">12px</option>
+                        <option value="1">8px</option>
+                        <option value="2">10px</option>
+                        <option value="4">14px</option>
+                        <option value="5">18px</option>
+                        <option value="6">24px</option>
+                        <option value="7">36px</option>
+                    </select>
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="btn-bold" title="Bold" data-cmd="bold"><b>B</b></button>
+                    <button class="toolbar-btn" id="btn-italic" title="Italic" data-cmd="italic"><i>I</i></button>
+                    <button class="toolbar-btn" id="btn-underline" title="Underline" data-cmd="underline"><u>U</u></button>
+                    <button class="toolbar-btn" id="btn-strike" title="Strikethrough" data-cmd="strikeThrough"><s>S</s></button>
+                </div>
+                
+                <div class="toolbar-group" style="gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 2px;">
+                        <span style="font-size: 11px; font-weight: bold; color: #64748b;">A</span>
+                        <input type="color" id="note-fg-color" title="Text Color" style="width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0; background: transparent;" value="#1e293b">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 2px;">
+                        <span style="font-size: 11px; font-weight: bold; color: #64748b;">✏️</span>
+                        <input type="color" id="note-bg-color" title="Highlight Color" style="width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0; background: transparent;" value="#ffffff">
+                    </div>
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="btn-align-left" title="Align Left" data-cmd="justifyLeft"> Align L</button>
+                    <button class="toolbar-btn" id="btn-align-center" title="Align Center" data-cmd="justifyCenter"> Align C</button>
+                    <button class="toolbar-btn" id="btn-align-right" title="Align Right" data-cmd="justifyRight"> Align R</button>
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="btn-list-bullet" title="Bulleted List" data-cmd="insertUnorderedList">• List</button>
+                    <button class="toolbar-btn" id="btn-list-number" title="Numbered List" data-cmd="insertOrderedList">1. List</button>
+                </div>
+                
+                <button class="toolbar-btn" id="btn-clear-format" title="Clear Formatting" data-cmd="removeFormat">Tx</button>
             </div>
-            <div style="display: flex; align-items: center; gap: 2px;">
-                <span style="font-size: 11px; font-weight: bold; color: #64748b;">✏️</span>
-                <input type="color" id="note-bg-color" title="Highlight Color" style="width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0; background: transparent;" value="#ffffff">
+            
+            <div class="editor-wrapper" id="editor-wrapper">
+                <div class="editor-page" id="editor-page" contenteditable="true">
+                    <div>Start writing your notes here...</div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <div>Words: <span id="word-count">0</span> | Characters: <span id="char-count">0</span></div>
+                <div id="save-status">All changes saved locally</div>
             </div>
         </div>
-        
-        <div class="toolbar-group">
-            <button class="toolbar-btn" id="btn-align-left" title="Align Left" data-cmd="justifyLeft"> Align L</button>
-            <button class="toolbar-btn" id="btn-align-center" title="Align Center" data-cmd="justifyCenter"> Align C</button>
-            <button class="toolbar-btn" id="btn-align-right" title="Align Right" data-cmd="justifyRight"> Align R</button>
-        </div>
-        
-        <div class="toolbar-group">
-            <button class="toolbar-btn" id="btn-list-bullet" title="Bulleted List" data-cmd="insertUnorderedList">• List</button>
-            <button class="toolbar-btn" id="btn-list-number" title="Numbered List" data-cmd="insertOrderedList">1. List</button>
-        </div>
-        
-        <button class="toolbar-btn" id="btn-clear-format" title="Clear Formatting" data-cmd="removeFormat">Tx</button>
-    </div>
-    
-    <div class="editor-wrapper" id="editor-wrapper">
-        <div class="editor-page" id="editor-page" contenteditable="true">
-            <div>Start writing your notes here...</div>
-        </div>
-    </div>
-    
-    <div class="footer">
-        <div>Words: <span id="word-count">0</span> | Characters: <span id="char-count">0</span></div>
-        <div id="save-status">All changes saved locally</div>
     </div>
 </div>
 `;
@@ -1020,7 +1097,7 @@ function triggerAutoSave() {
             myNotesData.notes[curId].lastModified = Date.now();
         }
         saveNotes();
-        updateNoteSelectDropdown();
+        renderNotesList();
     }, 1000);
 }
 
@@ -1036,7 +1113,7 @@ function createBlankNote(title = 'Untitled Note') {
     myNotesData.currentNoteId = id;
     saveNotes();
     loadNote(id);
-    updateNoteSelectDropdown();
+    renderNotesList();
 }
 
 function loadNote(id) {
@@ -1053,21 +1130,90 @@ function loadNote(id) {
     container.className = `notes-container theme-${note.theme || 'light'}`;
     
     updateWordAndCharCount();
+    
+    // Refresh sidebar list active styling
+    notesRoot.querySelectorAll('.note-item').forEach(el => {
+        if (el.dataset.id === id) {
+            el.classList.add('active');
+        } else {
+            el.classList.remove('active');
+        }
+    });
 }
 
-function updateNoteSelectDropdown() {
-    const select = notesRoot.getElementById('doc-select');
-    if (!select) return;
-    select.innerHTML = '';
+function renderNotesList() {
+    const listContainer = notesRoot.getElementById('notes-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
     
-    Object.keys(myNotesData.notes).forEach(id => {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.innerText = myNotesData.notes[id].title || 'Untitled Note';
-        select.appendChild(opt);
+    // Sort notes by lastModified descending
+    const sortedNotes = Object.values(myNotesData.notes).sort((a, b) => b.lastModified - a.lastModified);
+    
+    sortedNotes.forEach(note => {
+        const item = document.createElement('div');
+        item.className = 'note-item' + (note.id === myNotesData.currentNoteId ? ' active' : '');
+        item.setAttribute('data-id', note.id);
+        item.addEventListener('click', () => {
+            loadNote(note.id);
+        });
+        
+        const info = document.createElement('div');
+        info.className = 'note-item-info';
+        
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'note-item-title';
+        titleSpan.innerText = note.title || 'Untitled Note';
+        
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'note-item-date';
+        
+        // Format timestamp
+        const date = new Date(note.lastModified);
+        const hours = date.getHours();
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const formattedHours = hours % 12 || 12;
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}, ${formattedHours}:${minutes} ${ampm}`;
+        dateSpan.innerText = formattedDate;
+        
+        info.appendChild(titleSpan);
+        info.appendChild(dateSpan);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'note-item-delete';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Delete Note';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteNoteById(note.id);
+        });
+        
+        item.appendChild(info);
+        item.appendChild(deleteBtn);
+        listContainer.appendChild(item);
     });
+}
+
+function deleteNoteById(id) {
+    if (Object.keys(myNotesData.notes).length <= 1) {
+        if (confirm('Delete this note? It is your last note, a new blank note will be created.')) {
+            delete myNotesData.notes[id];
+            createBlankNote();
+        }
+        return;
+    }
     
-    select.value = myNotesData.currentNoteId;
+    if (confirm('Are you sure you want to delete this note?')) {
+        delete myNotesData.notes[id];
+        if (myNotesData.currentNoteId === id) {
+            const nextId = Object.keys(myNotesData.notes)[0];
+            myNotesData.currentNoteId = nextId;
+            loadNote(nextId);
+        }
+        saveNotes();
+        renderNotesList();
+    }
 }
 
 function updateWordAndCharCount() {
@@ -1083,37 +1229,16 @@ function updateWordAndCharCount() {
 }
 
 // Attach event listeners
-notesRoot.getElementById('btn-new-note').addEventListener('click', () => {
+notesRoot.getElementById('btn-new-note-sidebar').addEventListener('click', () => {
     createBlankNote();
 });
 
-notesRoot.getElementById('btn-delete-note').addEventListener('click', () => {
-    const curId = myNotesData.currentNoteId;
-    if (!curId) return;
-    
-    if (Object.keys(myNotesData.notes).length <= 1) {
-        if (confirm('Delete this note? It is your last note, a new blank note will be created.')) {
-            delete myNotesData.notes[curId];
-            createBlankNote();
-        }
-        return;
+notesRoot.getElementById('doc-title-input').addEventListener('input', (e) => {
+    // Instantly update title in active sidebar item to prevent focus loss
+    const activeTitleEl = notesRoot.querySelector('.note-item.active .note-item-title');
+    if (activeTitleEl) {
+        activeTitleEl.innerText = e.target.value || 'Untitled Note';
     }
-    
-    if (confirm('Are you sure you want to delete this note?')) {
-        delete myNotesData.notes[curId];
-        const nextId = Object.keys(myNotesData.notes)[0];
-        myNotesData.currentNoteId = nextId;
-        saveNotes();
-        loadNote(nextId);
-        updateNoteSelectDropdown();
-    }
-});
-
-notesRoot.getElementById('doc-select').addEventListener('change', (e) => {
-    loadNote(e.target.value);
-});
-
-notesRoot.getElementById('doc-title-input').addEventListener('input', () => {
     triggerAutoSave();
 });
 
@@ -1218,7 +1343,7 @@ chrome.storage.local.get(['myNotesData'], (result) => {
     if (result.myNotesData && result.myNotesData.notes && Object.keys(result.myNotesData.notes).length > 0) {
         myNotesData = result.myNotesData;
         loadNote(myNotesData.currentNoteId || Object.keys(myNotesData.notes)[0]);
-        updateNoteSelectDropdown();
+        renderNotesList();
     } else {
         createBlankNote('Welcome to My Notes');
     }
