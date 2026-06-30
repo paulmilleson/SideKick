@@ -710,6 +710,21 @@ urlsRoot.innerHTML = `
         opacity: 0.4;
         border: 1px dashed #ef4444 !important;
     }
+    /* Small Box Mode styles */
+    .small-box-mode td {
+        height: 28px !important;
+        padding: 2px !important;
+    }
+    .small-box-mode .display-link {
+        font-size: 9px !important;
+    }
+    .small-box-mode .cell-input {
+        font-size: 8px !important;
+        padding: 1px !important;
+    }
+    .small-box-mode .btn-color-picker {
+        font-size: 8px !important;
+    }
 </style>
 <div class="header">
     <label>
@@ -717,6 +732,9 @@ urlsRoot.innerHTML = `
     </label>
     <label style="margin-left: 15px;">
         <input type="checkbox" id="drag-toggle"> Drag Mode
+    </label>
+    <label style="margin-left: 15px;">
+        <input type="checkbox" id="small-box-toggle"> Small Box Mode
     </label>
 </div>
 <div class="grid">
@@ -809,6 +827,7 @@ let myUrlsData = {
 
 let isEditMode = false;
 let isDragMode = false;
+let isSmallBoxMode = false;
 
 function saveUrls() {
     chrome.storage.local.set({ myUrlsData });
@@ -1087,13 +1106,18 @@ function renderUrls() {
         listDiv.innerHTML = '';
 
         const table = document.createElement('table');
+        const classes = [];
         if (isEditMode) {
-            table.className = 'edit-mode';
+            classes.push('edit-mode');
         } else if (isDragMode) {
-            table.className = 'drag-mode';
+            classes.push('drag-mode');
         } else {
-            table.className = 'display-mode';
+            classes.push('display-mode');
         }
+        if (isSmallBoxMode) {
+            classes.push('small-box-mode');
+        }
+        table.className = classes.join(' ');
 
         // Determine which rows to render based on active data or mode
         const rowsToRender = [];
@@ -1108,7 +1132,8 @@ function renderUrls() {
         // Configure overflow-y on the quadrant container dynamically
         const quadEl = urlsRoot.querySelector('.q-' + quad.toLowerCase());
         if (quadEl) {
-            if (rowsToRender.length > 6) {
+            const threshold = isSmallBoxMode ? 8 : 6;
+            if (rowsToRender.length > threshold) {
                 quadEl.style.overflowY = 'auto';
             } else {
                 quadEl.style.overflowY = 'hidden';
@@ -1326,6 +1351,10 @@ function renderUrls() {
     modeToggle.checked = isEditMode;
     const dragToggle = urlsRoot.getElementById('drag-toggle');
     dragToggle.checked = isDragMode;
+    const smallBoxToggle = urlsRoot.getElementById('small-box-toggle');
+    if (smallBoxToggle) {
+        smallBoxToggle.checked = isSmallBoxMode;
+    }
 }
 
 function ensure20Cells(data) {
@@ -1407,6 +1436,7 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
 // Mode Toggle
 const modeToggle = urlsRoot.getElementById('mode-toggle');
 const dragToggle = urlsRoot.getElementById('drag-toggle');
+const smallBoxToggle = urlsRoot.getElementById('small-box-toggle');
 
 modeToggle.addEventListener('change', (e) => {
     isEditMode = e.target.checked;
@@ -1423,6 +1453,11 @@ dragToggle.addEventListener('change', (e) => {
         isEditMode = false;
         modeToggle.checked = false;
     }
+    renderUrls();
+});
+
+smallBoxToggle.addEventListener('change', (e) => {
+    isSmallBoxMode = e.target.checked;
     renderUrls();
 });
 
