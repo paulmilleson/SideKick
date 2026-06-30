@@ -1328,6 +1328,8 @@ notesRoot.getElementById('btn-print-note').addEventListener('click', () => {
                     line-height: 1.6;
                     font-size: 14px;
                     color: #1e293b;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                 }
                 @media print {
                     body {
