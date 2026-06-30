@@ -1095,7 +1095,27 @@ function renderUrls() {
             table.className = 'display-mode';
         }
 
+        // Determine which rows to render based on active data or mode
+        const rowsToRender = [];
         for (let r = 0; r < 10; r++) {
+            const hasData = !!((myUrlsData[quad][r * 2] && (myUrlsData[quad][r * 2].name || myUrlsData[quad][r * 2].url)) ||
+                               (myUrlsData[quad][r * 2 + 1] && (myUrlsData[quad][r * 2 + 1].name || myUrlsData[quad][r * 2 + 1].url)));
+            if (isEditMode || isDragMode || hasData) {
+                rowsToRender.push(r);
+            }
+        }
+
+        // Configure overflow-y on the quadrant container dynamically
+        const quadEl = urlsRoot.querySelector('.q-' + quad.toLowerCase());
+        if (quadEl) {
+            if (rowsToRender.length > 6) {
+                quadEl.style.overflowY = 'auto';
+            } else {
+                quadEl.style.overflowY = 'hidden';
+            }
+        }
+
+        rowsToRender.forEach(r => {
             const tr = document.createElement('tr');
             for (let c = 0; c < 2; c++) {
                 const td = document.createElement('td');
@@ -1151,7 +1171,7 @@ function renderUrls() {
                                 const itemA = { ...myUrlsData[sourceQuad][sourceIndex] };
                                 const itemB = { ...myUrlsData[quad][cellIndex] };
                                 
-                                const isOccupied = (item) => !!(item.name || item.url);
+                                const isOccupied = (itm) => !!(itm.name || itm.url);
                                 
                                 if (isOccupied(itemB)) {
                                     const targetEmptyIndices = [];
@@ -1298,7 +1318,7 @@ function renderUrls() {
                 tr.appendChild(td);
             }
             table.appendChild(tr);
-        }
+        });
         listDiv.appendChild(table);
     });
 
