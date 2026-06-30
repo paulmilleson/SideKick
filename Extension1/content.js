@@ -1308,7 +1308,11 @@ notesRoot.getElementById('btn-share-email').addEventListener('click', () => {
     const note = myNotesData.notes[curId];
     const subject = encodeURIComponent(note.title);
     const body = encodeURIComponent(notesRoot.getElementById('editor-page').innerText);
-    window.open(`mailto:?subject=${subject}&body=${body}`);
+    
+    // Create temporary link and click it without target="_blank"
+    const mailLink = document.createElement('a');
+    mailLink.href = `mailto:?subject=${subject}&body=${body}`;
+    mailLink.click();
 });
 
 // Copy to clipboard
