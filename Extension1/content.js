@@ -998,7 +998,7 @@ notesRoot.innerHTML = `
             <button class="new-doc-btn" id="btn-new-note-sidebar">+ New Note</button>
             <div style="display: flex; gap: 4px;">
                 <button class="header-btn" id="btn-import-file-trigger" style="flex: 1; font-size: 11px;" title="Import file from your PC">📥 Import</button>
-                <button class="header-btn" id="btn-local-folder-trigger" style="flex: 1; font-size: 11px;" title="Open local directory folder">📁 Folder</button>
+                <button class="header-btn" id="btn-local-folder-trigger" style="flex: 1; font-size: 11px;" title="Open local directory File Manager">📁 File Manager</button>
             </div>
             <input type="file" id="file-import-input" accept=".docx,.rtf,.html,.txt" style="display: none;">
             <div class="notes-list" id="notes-list"></div>
@@ -1188,39 +1188,9 @@ function triggerAutoSave() {
     if (status) status.innerText = 'Saving...';
     
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
-    autoSaveTimeout = setTimeout(async () => {
+    autoSaveTimeout = setTimeout(() => {
         const curId = myNotesData.currentNoteId;
-        if (curId && curId.startsWith('local-')) {
-            const note = localNotes[curId];
-            if (note && note.handle) {
-                if (note.title.endsWith('.docx') || note.title.endsWith('.rtf')) {
-                    if (status) status.innerText = 'Word/RTF local files are read-only (save as Extension Note to edit)';
-                    return;
-                }
-                try {
-                    const title = notesRoot.getElementById('doc-title-input').value;
-                    const content = notesRoot.getElementById('editor-page').innerHTML;
-                    
-                    const writable = await note.handle.createWritable();
-                    if (note.title.endsWith('.html')) {
-                        await writable.write(content);
-                    } else {
-                        await writable.write(notesRoot.getElementById('editor-page').innerText);
-                    }
-                    await writable.close();
-                    
-                    if (title !== note.title) {
-                        note.title = title;
-                    }
-                    note.lastModified = Date.now();
-                    if (status) status.innerText = 'All changes saved to file';
-                } catch (err) {
-                    console.error("Failed to write local file:", err);
-                    if (status) status.innerText = 'Failed to save to local file';
-                    return;
-                }
-            }
-        } else if (curId && myNotesData.notes[curId]) {
+        if (curId && myNotesData.notes[curId]) {
             myNotesData.notes[curId].title = notesRoot.getElementById('doc-title-input').value;
             myNotesData.notes[curId].content = notesRoot.getElementById('editor-page').innerHTML;
             myNotesData.notes[curId].theme = notesRoot.getElementById('theme-select').value;
@@ -1269,55 +1239,55 @@ function loadNote(id) {
     });
 }
 
-async function loadLocalNote(id) {
-    if (!id || !localNotes[id]) return;
-    myNotesData.currentNoteId = id;
-    
-    const note = localNotes[id];
+async function convertLocalFileToNote(name, file) {
+    let content = '';
     try {
-        const file = await note.handle.getFile();
-        let content = '';
-        
-        if (note.title.endsWith('.docx')) {
+        if (name.endsWith('.docx')) {
             const arrayBuffer = await file.arrayBuffer();
             const xmlText = await unzipDocx(arrayBuffer);
             content = parseDocxXML(xmlText);
         } else {
             const text = await file.text();
-            if (note.title.endsWith('.html')) {
+            if (name.endsWith('.html')) {
                 content = text;
-            } else if (note.title.endsWith('.rtf')) {
+            } else if (name.endsWith('.rtf')) {
                 content = parseRTF(text);
             } else {
                 content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
             }
         }
         
-        notesRoot.getElementById('doc-title-input').value = note.title;
-        notesRoot.getElementById('editor-page').innerHTML = content;
-        notesRoot.getElementById('theme-select').value = 'light';
+        const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
+        const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
         
-        const container = notesRoot.getElementById('notes-container');
-        container.className = 'notes-container theme-light';
-        
-        updateWordAndCharCount();
+        myNotesData.notes[id] = {
+            id,
+            title: noteTitle,
+            content: content,
+            theme: 'light',
+            lastModified: Date.now()
+        };
+        myNotesData.currentNoteId = id;
+        saveNotes();
+        loadNote(id);
+        renderNotesList();
         
         const status = notesRoot.getElementById('save-status');
         if (status) {
-            if (note.title.endsWith('.docx') || note.title.endsWith('.rtf')) {
-                status.innerText = 'Word/RTF local files are read-only (save as Extension Note to edit)';
-            } else {
-                status.innerText = 'Local file loaded';
-            }
+            status.innerText = `Converted '${name}' to editable Note`;
         }
-        
-        notesRoot.querySelectorAll('.note-item').forEach(el => {
-            if (el.dataset.id === id) {
-                el.classList.add('active');
-            } else {
-                el.classList.remove('active');
-            }
-        });
+    } catch (err) {
+        console.error("Failed to convert file:", err);
+        alert(`Failed to convert and import file: ${name}`);
+    }
+}
+
+async function loadLocalNote(id) {
+    if (!id || !localNotes[id]) return;
+    const note = localNotes[id];
+    try {
+        const file = await note.handle.getFile();
+        await convertLocalFileToNote(note.title, file);
     } catch (err) {
         console.error("Failed to load local file:", err);
         alert("Permission denied or failed to load local file.");
@@ -1480,68 +1450,10 @@ notesRoot.getElementById('btn-import-file-trigger').addEventListener('click', ()
     notesRoot.getElementById('file-import-input').click();
 });
 
-notesRoot.getElementById('file-import-input').addEventListener('change', (e) => {
+notesRoot.getElementById('file-import-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
-    const name = file.name;
-    const reader = new FileReader();
-    
-    if (name.endsWith('.docx')) {
-        reader.onload = async (evt) => {
-            try {
-                const arrayBuffer = evt.target.result;
-                const xmlText = await unzipDocx(arrayBuffer);
-                const content = parseDocxXML(xmlText);
-                
-                const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
-                const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-                myNotesData.notes[id] = {
-                    id,
-                    title: noteTitle,
-                    content: content,
-                    theme: 'light',
-                    lastModified: Date.now()
-                };
-                myNotesData.currentNoteId = id;
-                saveNotes();
-                loadNote(id);
-                renderNotesList();
-            } catch (err) {
-                console.error(err);
-                alert("Failed to parse Word (.docx) file.");
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    } else {
-        reader.onload = (evt) => {
-            const text = evt.target.result;
-            let content = '';
-            
-            if (name.endsWith('.html')) {
-                content = text;
-            } else if (name.endsWith('.rtf')) {
-                content = parseRTF(text);
-            } else {
-                content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
-            }
-            
-            const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
-            const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-            myNotesData.notes[id] = {
-                id,
-                title: noteTitle,
-                content: content,
-                theme: 'light',
-                lastModified: Date.now()
-            };
-            myNotesData.currentNoteId = id;
-            saveNotes();
-            loadNote(id);
-            renderNotesList();
-        };
-        reader.readAsText(file);
-    }
+    await convertLocalFileToNote(file.name, file);
 });
 
 notesRoot.getElementById('btn-local-folder-trigger').addEventListener('click', async () => {
