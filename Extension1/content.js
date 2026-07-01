@@ -996,6 +996,11 @@ notesRoot.innerHTML = `
         <!-- Sidebar File Manager -->
         <div class="notes-sidebar">
             <button class="new-doc-btn" id="btn-new-note-sidebar">+ New Note</button>
+            <div style="display: flex; gap: 4px;">
+                <button class="header-btn" id="btn-import-file-trigger" style="flex: 1; font-size: 11px;" title="Import file from your PC">📥 Import</button>
+                <button class="header-btn" id="btn-local-folder-trigger" style="flex: 1; font-size: 11px;" title="Open local directory folder">📁 Folder</button>
+            </div>
+            <input type="file" id="file-import-input" accept=".docx,.rtf,.html,.txt" style="display: none;">
             <div class="notes-list" id="notes-list"></div>
         </div>
         
@@ -1076,6 +1081,21 @@ let myNotesData = {
 };
 
 let autoSaveTimeout = null;
+let localDirHandle = null;
+let localNotes = {};
+
+function parseRTF(rtfText) {
+    let clean = rtfText;
+    clean = clean.replace(/\\rtf1[\s\S]*?\\deflang\d+/, '');
+    clean = clean.replace(/\\fonttbl[\s\S]*?\\colortbl[\s\S]*?\\stylesheet[\s\S]*?\\info[\s\S]*?\}/g, '');
+    clean = clean.replace(/\\b\s+([\s\S]*?)\\b0/g, '<strong>$1</strong>');
+    clean = clean.replace(/\\b\s+([\s\S]*?)(?=\\[a-z]|$)/g, '<strong>$1</strong>');
+    clean = clean.replace(/\\i\s+([\s\S]*?)\\i0/g, '<em>$1</em>');
+    clean = clean.replace(/\\par\s*/g, '<br>');
+    clean = clean.replace(/\\[a-z-]+\d*\s*/g, '');
+    clean = clean.replace(/[\{\}]/g, '');
+    return clean.trim();
+}
 
 function saveNotes() {
     chrome.storage.local.set({ myNotesData });
@@ -1088,15 +1108,41 @@ function triggerAutoSave() {
     if (status) status.innerText = 'Saving...';
     
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
-    autoSaveTimeout = setTimeout(() => {
+    autoSaveTimeout = setTimeout(async () => {
         const curId = myNotesData.currentNoteId;
-        if (curId && myNotesData.notes[curId]) {
+        if (curId && curId.startsWith('local-')) {
+            const note = localNotes[curId];
+            if (note && note.handle) {
+                try {
+                    const title = notesRoot.getElementById('doc-title-input').value;
+                    const content = notesRoot.getElementById('editor-page').innerHTML;
+                    
+                    const writable = await note.handle.createWritable();
+                    if (note.title.endsWith('.html')) {
+                        await writable.write(content);
+                    } else {
+                        await writable.write(notesRoot.getElementById('editor-page').innerText);
+                    }
+                    await writable.close();
+                    
+                    if (title !== note.title) {
+                        note.title = title;
+                    }
+                    note.lastModified = Date.now();
+                    if (status) status.innerText = 'All changes saved to file';
+                } catch (err) {
+                    console.error("Failed to write local file:", err);
+                    if (status) status.innerText = 'Failed to save to local file';
+                    return;
+                }
+            }
+        } else if (curId && myNotesData.notes[curId]) {
             myNotesData.notes[curId].title = notesRoot.getElementById('doc-title-input').value;
             myNotesData.notes[curId].content = notesRoot.getElementById('editor-page').innerHTML;
             myNotesData.notes[curId].theme = notesRoot.getElementById('theme-select').value;
             myNotesData.notes[curId].lastModified = Date.now();
+            saveNotes();
         }
-        saveNotes();
         renderNotesList();
     }, 1000);
 }
@@ -1125,13 +1171,11 @@ function loadNote(id) {
     notesRoot.getElementById('editor-page').innerHTML = note.content;
     notesRoot.getElementById('theme-select').value = note.theme || 'light';
     
-    // Apply theme CSS class
     const container = notesRoot.getElementById('notes-container');
     container.className = `notes-container theme-${note.theme || 'light'}`;
     
     updateWordAndCharCount();
     
-    // Refresh sidebar list active styling
     notesRoot.querySelectorAll('.note-item').forEach(el => {
         if (el.dataset.id === id) {
             el.classList.add('active');
@@ -1141,58 +1185,158 @@ function loadNote(id) {
     });
 }
 
+async function loadLocalNote(id) {
+    if (!id || !localNotes[id]) return;
+    myNotesData.currentNoteId = id;
+    
+    const note = localNotes[id];
+    try {
+        const file = await note.handle.getFile();
+        const text = await file.text();
+        let content = '';
+        
+        if (note.title.endsWith('.html')) {
+            content = text;
+        } else if (note.title.endsWith('.rtf')) {
+            content = parseRTF(text);
+        } else {
+            content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+        }
+        
+        notesRoot.getElementById('doc-title-input').value = note.title;
+        notesRoot.getElementById('editor-page').innerHTML = content;
+        notesRoot.getElementById('theme-select').value = 'light';
+        
+        const container = notesRoot.getElementById('notes-container');
+        container.className = 'notes-container theme-light';
+        
+        updateWordAndCharCount();
+        
+        notesRoot.querySelectorAll('.note-item').forEach(el => {
+            if (el.dataset.id === id) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+        });
+    } catch (err) {
+        console.error("Failed to load local file:", err);
+        alert("Permission denied or failed to load local file.");
+    }
+}
+
+async function scanLocalDirectory() {
+    if (!localDirHandle) return;
+    localNotes = {};
+    for await (const entry of localDirHandle.values()) {
+        if (entry.kind === 'file') {
+            const name = entry.name;
+            if (name.endsWith('.txt') || name.endsWith('.html') || name.endsWith('.rtf') || name.endsWith('.docx')) {
+                const file = await entry.getFile();
+                const id = 'local-' + name;
+                localNotes[id] = {
+                    id,
+                    title: name,
+                    handle: entry,
+                    lastModified: file.lastModified
+                };
+            }
+        }
+    }
+}
+
+function createNoteItemElement(note, isLocal) {
+    const activeId = myNotesData.currentNoteId;
+    const item = document.createElement('div');
+    item.className = 'note-item' + (note.id === activeId ? ' active' : '');
+    item.setAttribute('data-id', note.id);
+    item.addEventListener('click', () => {
+        if (isLocal) {
+            loadLocalNote(note.id);
+        } else {
+            loadNote(note.id);
+        }
+    });
+    
+    const info = document.createElement('div');
+    info.className = 'note-item-info';
+    
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'note-item-title';
+    titleSpan.innerText = note.title || 'Untitled Note';
+    
+    const dateSpan = document.createElement('span');
+    dateSpan.className = 'note-item-date';
+    
+    const date = new Date(note.lastModified);
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    dateSpan.innerText = `${monthNames[date.getMonth()]} ${date.getDate()}, ${formattedHours}:${minutes} ${ampm}`;
+    
+    info.appendChild(titleSpan);
+    info.appendChild(dateSpan);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'note-item-delete';
+    deleteBtn.innerHTML = '🗑️';
+    deleteBtn.title = isLocal ? 'Remove from list' : 'Delete Note';
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isLocal) {
+            delete localNotes[note.id];
+            if (myNotesData.currentNoteId === note.id) {
+                const nextId = Object.keys(myNotesData.notes)[0];
+                loadNote(nextId);
+            } else {
+                renderNotesList();
+            }
+        } else {
+            deleteNoteById(note.id);
+        }
+    });
+    
+    item.appendChild(info);
+    item.appendChild(deleteBtn);
+    return item;
+}
+
 function renderNotesList() {
     const listContainer = notesRoot.getElementById('notes-list');
     if (!listContainer) return;
     listContainer.innerHTML = '';
     
-    // Sort notes by lastModified descending
-    const sortedNotes = Object.values(myNotesData.notes).sort((a, b) => b.lastModified - a.lastModified);
+    const extHeader = document.createElement('div');
+    extHeader.style.cssText = 'font-size: 11px; font-weight: bold; color: #64748b; margin-top: 8px; margin-bottom: 4px;';
+    extHeader.innerText = 'EXTENSION NOTES';
+    listContainer.appendChild(extHeader);
     
-    sortedNotes.forEach(note => {
-        const item = document.createElement('div');
-        item.className = 'note-item' + (note.id === myNotesData.currentNoteId ? ' active' : '');
-        item.setAttribute('data-id', note.id);
-        item.addEventListener('click', () => {
-            loadNote(note.id);
-        });
-        
-        const info = document.createElement('div');
-        info.className = 'note-item-info';
-        
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'note-item-title';
-        titleSpan.innerText = note.title || 'Untitled Note';
-        
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'note-item-date';
-        
-        // Format timestamp
-        const date = new Date(note.lastModified);
-        const hours = date.getHours();
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const formattedHours = hours % 12 || 12;
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}, ${formattedHours}:${minutes} ${ampm}`;
-        dateSpan.innerText = formattedDate;
-        
-        info.appendChild(titleSpan);
-        info.appendChild(dateSpan);
-        
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'note-item-delete';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete Note';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteNoteById(note.id);
-        });
-        
-        item.appendChild(info);
-        item.appendChild(deleteBtn);
+    const extNotes = Object.values(myNotesData.notes).sort((a, b) => b.lastModified - a.lastModified);
+    extNotes.forEach(note => {
+        const item = createNoteItemElement(note, false);
         listContainer.appendChild(item);
     });
+    
+    if (localDirHandle) {
+        const localHeader = document.createElement('div');
+        localHeader.style.cssText = 'font-size: 11px; font-weight: bold; color: #64748b; margin-top: 16px; margin-bottom: 4px;';
+        localHeader.innerText = 'LOCAL FILES (' + localDirHandle.name + ')';
+        listContainer.appendChild(localHeader);
+        
+        const lNotes = Object.values(localNotes).sort((a, b) => b.lastModified - a.lastModified);
+        if (lNotes.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'font-size: 10px; color: #94a3b8; font-style: italic; padding: 4px;';
+            empty.innerText = 'No compatible files found.';
+            listContainer.appendChild(empty);
+        }
+        lNotes.forEach(note => {
+            const item = createNoteItemElement(note, true);
+            listContainer.appendChild(item);
+        });
+    }
 }
 
 function deleteNoteById(id) {
@@ -1231,6 +1375,56 @@ function updateWordAndCharCount() {
 // Attach event listeners
 notesRoot.getElementById('btn-new-note-sidebar').addEventListener('click', () => {
     createBlankNote();
+});
+
+notesRoot.getElementById('btn-import-file-trigger').addEventListener('click', () => {
+    notesRoot.getElementById('file-import-input').click();
+});
+
+notesRoot.getElementById('file-import-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        const text = evt.target.result;
+        let content = '';
+        const name = file.name;
+        
+        if (name.endsWith('.html')) {
+            content = text;
+        } else if (name.endsWith('.rtf')) {
+            content = parseRTF(text);
+        } else {
+            content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+        }
+        
+        const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
+        const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        myNotesData.notes[id] = {
+            id,
+            title: noteTitle,
+            content: content,
+            theme: 'light',
+            lastModified: Date.now()
+        };
+        myNotesData.currentNoteId = id;
+        saveNotes();
+        loadNote(id);
+        renderNotesList();
+    };
+    reader.readAsText(file);
+});
+
+notesRoot.getElementById('btn-local-folder-trigger').addEventListener('click', async () => {
+    try {
+        localDirHandle = await window.showDirectoryPicker();
+        localNotes = {};
+        await scanLocalDirectory();
+        renderNotesList();
+    } catch (err) {
+        console.error("Directory picker canceled or failed:", err);
+    }
 });
 
 notesRoot.getElementById('doc-title-input').addEventListener('input', (e) => {
