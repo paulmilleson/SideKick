@@ -1097,6 +1097,86 @@ function parseRTF(rtfText) {
     return clean.trim();
 }
 
+async function unzipDocx(arrayBuffer) {
+    const view = new DataView(arrayBuffer);
+    let offset = 0;
+    
+    while (offset < arrayBuffer.byteLength - 30) {
+        const sig = view.getUint32(offset, true);
+        if (sig === 0x04034b50) { // Local file header signature
+            const compression = view.getUint16(offset + 8, true);
+            const compressedSize = view.getUint32(offset + 18, true);
+            const uncompressedSize = view.getUint32(offset + 22, true);
+            const fileNameLength = view.getUint16(offset + 26, true);
+            const extraFieldLength = view.getUint16(offset + 28, true);
+            
+            const fileNameBytes = new Uint8Array(arrayBuffer, offset + 30, fileNameLength);
+            const fileName = new TextDecoder().decode(fileNameBytes);
+            
+            const dataOffset = offset + 30 + fileNameLength + extraFieldLength;
+            
+            if (fileName === 'word/document.xml') {
+                const compressedData = new Uint8Array(arrayBuffer, dataOffset, compressedSize);
+                
+                if (compression === 0) { // Uncompressed
+                    return new TextDecoder().decode(compressedData);
+                } else if (compression === 8) { // Deflate
+                    const ds = new DecompressionStream('deflate-raw');
+                    const writer = ds.writable.getWriter();
+                    writer.write(compressedData);
+                    writer.close();
+                    
+                    const response = new Response(ds.readable);
+                    const decompressedBuffer = await response.arrayBuffer();
+                    return new TextDecoder().decode(decompressedBuffer);
+                }
+            }
+            offset = dataOffset + compressedSize;
+        } else {
+            offset++;
+        }
+    }
+    throw new Error("word/document.xml not found in docx structure");
+}
+
+function parseDocxXML(xmlText) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+    const paragraphs = xmlDoc.getElementsByTagName("w:p");
+    let html = "";
+    
+    for (let i = 0; i < paragraphs.length; i++) {
+        const p = paragraphs[i];
+        let pHTML = "";
+        const runs = p.getElementsByTagName("w:r");
+        
+        for (let j = 0; j < runs.length; j++) {
+            const r = runs[j];
+            let textVal = "";
+            const tTags = r.getElementsByTagName("w:t");
+            for (let k = 0; k < tTags.length; k++) {
+                textVal += tTags[k].textContent;
+            }
+            
+            if (textVal) {
+                const isBold = r.getElementsByTagName("w:b").length > 0;
+                const isItalic = r.getElementsByTagName("w:i").length > 0;
+                
+                let formatted = textVal;
+                if (isBold) formatted = `<strong>${formatted}</strong>`;
+                if (isItalic) formatted = `<em>${formatted}</em>`;
+                pHTML += formatted;
+            }
+        }
+        if (pHTML) {
+            html += `<div>${pHTML}</div>`;
+        } else {
+            html += `<div><br></div>`;
+        }
+    }
+    return html || "<div>Empty Document</div>";
+}
+
 function saveNotes() {
     chrome.storage.local.set({ myNotesData });
     const status = notesRoot.getElementById('save-status');
@@ -1113,6 +1193,10 @@ function triggerAutoSave() {
         if (curId && curId.startsWith('local-')) {
             const note = localNotes[curId];
             if (note && note.handle) {
+                if (note.title.endsWith('.docx') || note.title.endsWith('.rtf')) {
+                    if (status) status.innerText = 'Word/RTF local files are read-only (save as Extension Note to edit)';
+                    return;
+                }
                 try {
                     const title = notesRoot.getElementById('doc-title-input').value;
                     const content = notesRoot.getElementById('editor-page').innerHTML;
@@ -1192,15 +1276,21 @@ async function loadLocalNote(id) {
     const note = localNotes[id];
     try {
         const file = await note.handle.getFile();
-        const text = await file.text();
         let content = '';
         
-        if (note.title.endsWith('.html')) {
-            content = text;
-        } else if (note.title.endsWith('.rtf')) {
-            content = parseRTF(text);
+        if (note.title.endsWith('.docx')) {
+            const arrayBuffer = await file.arrayBuffer();
+            const xmlText = await unzipDocx(arrayBuffer);
+            content = parseDocxXML(xmlText);
         } else {
-            content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+            const text = await file.text();
+            if (note.title.endsWith('.html')) {
+                content = text;
+            } else if (note.title.endsWith('.rtf')) {
+                content = parseRTF(text);
+            } else {
+                content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+            }
         }
         
         notesRoot.getElementById('doc-title-input').value = note.title;
@@ -1211,6 +1301,15 @@ async function loadLocalNote(id) {
         container.className = 'notes-container theme-light';
         
         updateWordAndCharCount();
+        
+        const status = notesRoot.getElementById('save-status');
+        if (status) {
+            if (note.title.endsWith('.docx') || note.title.endsWith('.rtf')) {
+                status.innerText = 'Word/RTF local files are read-only (save as Extension Note to edit)';
+            } else {
+                status.innerText = 'Local file loaded';
+            }
+        }
         
         notesRoot.querySelectorAll('.note-item').forEach(el => {
             if (el.dataset.id === id) {
@@ -1385,35 +1484,64 @@ notesRoot.getElementById('file-import-input').addEventListener('change', (e) => 
     const file = e.target.files[0];
     if (!file) return;
     
+    const name = file.name;
     const reader = new FileReader();
-    reader.onload = (evt) => {
-        const text = evt.target.result;
-        let content = '';
-        const name = file.name;
-        
-        if (name.endsWith('.html')) {
-            content = text;
-        } else if (name.endsWith('.rtf')) {
-            content = parseRTF(text);
-        } else {
-            content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
-        }
-        
-        const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
-        const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-        myNotesData.notes[id] = {
-            id,
-            title: noteTitle,
-            content: content,
-            theme: 'light',
-            lastModified: Date.now()
+    
+    if (name.endsWith('.docx')) {
+        reader.onload = async (evt) => {
+            try {
+                const arrayBuffer = evt.target.result;
+                const xmlText = await unzipDocx(arrayBuffer);
+                const content = parseDocxXML(xmlText);
+                
+                const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
+                const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+                myNotesData.notes[id] = {
+                    id,
+                    title: noteTitle,
+                    content: content,
+                    theme: 'light',
+                    lastModified: Date.now()
+                };
+                myNotesData.currentNoteId = id;
+                saveNotes();
+                loadNote(id);
+                renderNotesList();
+            } catch (err) {
+                console.error(err);
+                alert("Failed to parse Word (.docx) file.");
+            }
         };
-        myNotesData.currentNoteId = id;
-        saveNotes();
-        loadNote(id);
-        renderNotesList();
-    };
-    reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.onload = (evt) => {
+            const text = evt.target.result;
+            let content = '';
+            
+            if (name.endsWith('.html')) {
+                content = text;
+            } else if (name.endsWith('.rtf')) {
+                content = parseRTF(text);
+            } else {
+                content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
+            }
+            
+            const noteTitle = name.substring(0, name.lastIndexOf('.')) || name;
+            const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            myNotesData.notes[id] = {
+                id,
+                title: noteTitle,
+                content: content,
+                theme: 'light',
+                lastModified: Date.now()
+            };
+            myNotesData.currentNoteId = id;
+            saveNotes();
+            loadNote(id);
+            renderNotesList();
+        };
+        reader.readAsText(file);
+    }
 });
 
 notesRoot.getElementById('btn-local-folder-trigger').addEventListener('click', async () => {
