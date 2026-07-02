@@ -1707,86 +1707,250 @@ function renderInsertMainMenu() {
     insertDropdown.innerHTML = `
         <div class="dropdown-panel-title">Insert Element</div>
         <div style="display: flex; flex-direction: column; gap: 4px;">
-            <button class="border-toggle-btn" id="menu-opt-table" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">📊 Table Grid</button>
+            <button class="border-toggle-btn" id="menu-opt-table" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">📊 Table Creator & Editor</button>
             <button class="border-toggle-btn" id="menu-opt-image" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🖼️ Image Uploader</button>
             <button class="border-toggle-btn" id="menu-opt-line" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">➖ Divider Line</button>
             <button class="border-toggle-btn" id="menu-opt-link" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🔗 Hyperlink</button>
             <button class="border-toggle-btn" id="menu-opt-unlink" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🔗 Remove Link</button>
-            <button class="border-toggle-btn" id="menu-opt-border" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🌐 Cell Borders</button>
-            <button class="border-toggle-btn" id="menu-opt-padding" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">↕️ Cell Padding</button>
         </div>
     `;
     
-    notesRoot.getElementById('menu-opt-table').addEventListener('click', renderTableGridSelector);
+    notesRoot.getElementById('menu-opt-table').addEventListener('click', renderTableTool);
     notesRoot.getElementById('menu-opt-image').addEventListener('click', renderImageSelector);
     notesRoot.getElementById('menu-opt-line').addEventListener('click', renderLineSelector);
     notesRoot.getElementById('menu-opt-link').addEventListener('click', renderLinkSelector);
     notesRoot.getElementById('menu-opt-unlink').addEventListener('click', () => {
+        restoreSelection();
         document.execCommand('unlink', false, null);
         notesRoot.getElementById('editor-page').focus();
         triggerAutoSave();
         insertDropdown.style.display = 'none';
     });
-    notesRoot.getElementById('menu-opt-border').addEventListener('click', renderBorderSelector);
-    notesRoot.getElementById('menu-opt-padding').addEventListener('click', renderPaddingSelector);
 }
 
-function renderTableGridSelector() {
+function renderTableTool() {
+    const cell = getActiveCell();
+    const isEditing = !!cell;
+    
     let selectedRows = 0;
     let selectedCols = 0;
+    let selectedPadding = "8px";
+    let selectedThickness = 1;
+    let selectedSides = ['all'];
+    
     insertDropdown.innerHTML = `
         <div class="dropdown-panel-title">
-            <span>📊 Create Table</span>
+            <span>${isEditing ? '📊 Table Editor' : '📊 Create Table'}</span>
             <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
         </div>
-        <div id="table-dimensions-label" style="font-weight: 500; font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: center;">Move mouse to select size</div>
-        <div class="grid-container" id="grid-container"></div>
+        
+        ${!isEditing ? `
+            <div id="table-dimensions-label" style="font-weight: 500; font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: center;">Click grid to select size: 0 x 0</div>
+            <div class="grid-container" id="grid-container"></div>
+        ` : ''}
+        
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-top: 8px; margin-bottom: 6px;">1. Cell Padding</div>
+        <div style="display: flex; gap: 4px; margin-bottom: 8px;">
+            <button class="padding-option-btn" id="pad-compact" data-pad="4px" style="padding: 4px 6px;">Compact (4px)</button>
+            <button class="padding-option-btn active" id="pad-normal" data-pad="8px" style="padding: 4px 6px;">Normal (8px)</button>
+            <button class="padding-option-btn" id="pad-spacious" data-pad="16px" style="padding: 4px 6px;">Spacious (16)</button>
+        </div>
+        
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px;">2. Toggle Border Side</div>
+        <div class="borders-grid" style="margin-bottom: 8px;">
+            <button class="border-toggle-btn active" data-side="all">All</button>
+            <button class="border-toggle-btn" data-side="none">None</button>
+            <button class="border-toggle-btn" data-side="top">Top</button>
+            <button class="border-toggle-btn" data-side="bottom">Bottom</button>
+            <button class="border-toggle-btn" data-side="left">Left</button>
+            <button class="border-toggle-btn" data-side="right">Right</button>
+        </div>
+        
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px;">3. Border Thickness</div>
+        <div style="display: flex; gap: 4px; margin-bottom: 12px;">
+            <button class="border-toggle-btn active" data-border-size="1">1px</button>
+            <button class="border-toggle-btn" data-border-size="2">2px</button>
+            <button class="border-toggle-btn" data-border-size="3">3px</button>
+        </div>
+        
+        <button class="new-doc-btn" id="table-action-submit" style="width: 100%; font-size: 12px; background: #2563eb; color: white;">
+            ${isEditing ? 'Apply Table Styles' : 'Insert Table'}
+        </button>
     `;
     
-    const container = notesRoot.getElementById('grid-container');
-    const label = notesRoot.getElementById('table-dimensions-label');
-    
-    for (let r = 1; r <= 5; r++) {
-        for (let c = 1; c <= 5; c++) {
-            const cell = document.createElement('div');
-            cell.className = 'grid-square';
-            cell.dataset.row = r;
-            cell.dataset.col = c;
-            container.appendChild(cell);
-            
-            cell.addEventListener('mouseover', () => {
-                selectedRows = r;
-                selectedCols = c;
-                label.innerText = `Table size: ${selectedCols} columns x ${selectedRows} rows`;
-                const squares = container.getElementsByClassName('grid-square');
-                for (let sq of squares) {
-                    const sr = parseInt(sq.dataset.row);
-                    const sc = parseInt(sq.dataset.col);
-                    if (sr <= r && sc <= c) {
-                        sq.classList.add('highlighted');
-                    } else {
-                        sq.classList.remove('highlighted');
+    if (!isEditing) {
+        const container = notesRoot.getElementById('grid-container');
+        const label = notesRoot.getElementById('table-dimensions-label');
+        
+        for (let r = 1; r <= 5; r++) {
+            for (let c = 1; c <= 5; c++) {
+                const gridSquare = document.createElement('div');
+                gridSquare.className = 'grid-square';
+                gridSquare.dataset.row = r;
+                gridSquare.dataset.col = c;
+                container.appendChild(gridSquare);
+                
+                gridSquare.addEventListener('mouseover', () => {
+                    if (selectedRows === 0) {
+                        label.innerText = `Click to set size: ${c} cols x ${r} rows`;
+                        const squares = container.getElementsByClassName('grid-square');
+                        for (let sq of squares) {
+                            const sr = parseInt(sq.dataset.row);
+                            const sc = parseInt(sq.dataset.col);
+                            if (sr <= r && sc <= c) {
+                                sq.classList.add('highlighted');
+                            } else {
+                                sq.classList.remove('highlighted');
+                            }
+                        }
                     }
-                }
-            });
-            
-            cell.addEventListener('click', () => {
-                let tableHtml = `<table style="border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin: 12px 0;">`;
-                for (let rowIdx = 0; rowIdx < selectedRows; rowIdx++) {
-                    tableHtml += `<tr>`;
-                    for (let colIdx = 0; colIdx < selectedCols; colIdx++) {
-                        tableHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px; vertical-align: top;"><br></td>`;
+                });
+                
+                gridSquare.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedRows = r;
+                    selectedCols = c;
+                    label.innerText = `Selected Size: ${c} cols x ${r} rows`;
+                    const squares = container.getElementsByClassName('grid-square');
+                    for (let sq of squares) {
+                        const sr = parseInt(sq.dataset.row);
+                        const sc = parseInt(sq.dataset.col);
+                        if (sr <= r && sc <= c) {
+                            sq.classList.add('highlighted');
+                            sq.style.background = '#10b981';
+                        } else {
+                            sq.classList.remove('highlighted');
+                            sq.style.background = '';
+                        }
                     }
-                    tableHtml += `</tr>`;
-                }
-                tableHtml += `</table>`;
-                document.execCommand('insertHTML', false, tableHtml);
-                notesRoot.getElementById('editor-page').focus();
-                triggerAutoSave();
-                insertDropdown.style.display = 'none';
-            });
+                });
+            }
+        }
+    } else {
+        if (cell.style.padding === '4px') {
+            notesRoot.getElementById('pad-compact').classList.add('active');
+            notesRoot.getElementById('pad-normal').classList.remove('active');
+            selectedPadding = "4px";
+        } else if (cell.style.padding === '16px') {
+            notesRoot.getElementById('pad-spacious').classList.add('active');
+            notesRoot.getElementById('pad-normal').classList.remove('active');
+            selectedPadding = "16px";
         }
     }
+    
+    const padBtns = insertDropdown.querySelectorAll('.padding-option-btn');
+    padBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            padBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedPadding = btn.dataset.pad;
+        });
+    });
+    
+    const thicknessBtns = insertDropdown.querySelectorAll('button[data-border-size]');
+    thicknessBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            thicknessBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedThickness = parseInt(btn.getAttribute('data-border-size'));
+        });
+    });
+    
+    const sideBtns = insertDropdown.querySelectorAll('button[data-side]');
+    sideBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const side = btn.dataset.side;
+            
+            if (side === 'none') {
+                selectedSides = ['none'];
+            } else if (side === 'all') {
+                selectedSides = ['all'];
+            } else {
+                selectedSides = selectedSides.filter(s => s !== 'none' && s !== 'all');
+                if (selectedSides.includes(side)) {
+                    selectedSides = selectedSides.filter(s => s !== side);
+                } else {
+                    selectedSides.push(side);
+                }
+                if (selectedSides.length === 0) {
+                    selectedSides = ['none'];
+                }
+            }
+            
+            sideBtns.forEach(b => {
+                if (selectedSides.includes(b.dataset.side)) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+        });
+    });
+    
+    notesRoot.getElementById('table-action-submit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        restoreSelection();
+        
+        const borderVal = `${selectedThickness}px solid #cbd5e1`;
+        
+        if (isEditing) {
+            const table = cell.closest('table');
+            if (table) {
+                const cells = table.getElementsByTagName('td');
+                for (let i = 0; i < cells.length; i++) {
+                    const td = cells[i];
+                    td.style.padding = selectedPadding;
+                    
+                    if (selectedSides.includes('none')) {
+                        td.style.border = 'none';
+                    } else if (selectedSides.includes('all')) {
+                        td.style.border = borderVal;
+                    } else {
+                        td.style.borderTop = selectedSides.includes('top') ? borderVal : 'none';
+                        td.style.borderBottom = selectedSides.includes('bottom') ? borderVal : 'none';
+                        td.style.borderLeft = selectedSides.includes('left') ? borderVal : 'none';
+                        td.style.borderRight = selectedSides.includes('right') ? borderVal : 'none';
+                    }
+                }
+                triggerAutoSave();
+            }
+        } else {
+            if (selectedRows === 0 || selectedCols === 0) {
+                alert("Please click on the dimension grid to select table size first.");
+                return;
+            }
+            
+            let tableHtml = `<table style="border-collapse: collapse; width: 100%; border: ${selectedSides.includes('all') ? borderVal : 'none'}; margin: 12px 0;">`;
+            for (let r = 0; r < selectedRows; r++) {
+                tableHtml += `<tr>`;
+                for (let c = 0; c < selectedCols; c++) {
+                    let cellStyle = `padding: ${selectedPadding}; vertical-align: top;`;
+                    if (selectedSides.includes('none')) {
+                        cellStyle += ' border: none;';
+                    } else if (selectedSides.includes('all')) {
+                        cellStyle += ` border: ${borderVal};`;
+                    } else {
+                        cellStyle += ` border-top: ${selectedSides.includes('top') ? borderVal : 'none'};`;
+                        cellStyle += ` border-bottom: ${selectedSides.includes('bottom') ? borderVal : 'none'};`;
+                        cellStyle += ` border-left: ${selectedSides.includes('left') ? borderVal : 'none'};`;
+                        cellStyle += ` border-right: ${selectedSides.includes('right') ? borderVal : 'none'};`;
+                    }
+                    tableHtml += `<td style="${cellStyle}"><br></td>`;
+                }
+                tableHtml += `</tr>`;
+            }
+            tableHtml += `</table>`;
+            
+            document.execCommand('insertHTML', false, tableHtml);
+            notesRoot.getElementById('editor-page').focus();
+            triggerAutoSave();
+        }
+        
+        insertDropdown.style.display = 'none';
+    });
     
     notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
 }
@@ -1813,6 +1977,7 @@ function renderImageSelector() {
     notesRoot.getElementById('img-menu-url-submit').addEventListener('click', () => {
         const url = notesRoot.getElementById('img-menu-url').value;
         if (url) {
+            restoreSelection();
             const imgHtml = `<img src="${url}" style="max-width: 100%; border-radius: 8px; margin: 12px 0;">`;
             document.execCommand('insertHTML', false, imgHtml);
             notesRoot.getElementById('editor-page').focus();
@@ -1828,7 +1993,7 @@ function renderLineSelector() {
     insertDropdown.innerHTML = `
         <div class="dropdown-panel-title">
             <span>➖ Divider Line</span>
-            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+            <button id="menu-back" style="background: none; border: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
         </div>
         <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px;">1. Select Style</div>
         <div class="divider-option" data-style="solid">
@@ -1865,6 +2030,7 @@ function renderLineSelector() {
     for (let opt of styleOptions) {
         opt.addEventListener('click', () => {
             selectedStyle = opt.dataset.style;
+            restoreSelection();
             const lineHtml = `<hr style="border: none; border-top: ${selectedThick}px ${selectedStyle} #cbd5e1; margin: 16px 0;">`;
             document.execCommand('insertHTML', false, lineHtml);
             notesRoot.getElementById('editor-page').focus();
@@ -1900,6 +2066,7 @@ function renderLinkSelector() {
     notesRoot.getElementById('link-menu-submit').addEventListener('click', () => {
         const url = notesRoot.getElementById('link-menu-url').value;
         if (url) {
+            restoreSelection();
             document.execCommand('createLink', false, url);
             notesRoot.getElementById('editor-page').focus();
             triggerAutoSave();
@@ -1910,132 +2077,12 @@ function renderLinkSelector() {
     notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
 }
 
-function renderBorderSelector() {
-    const cell = getActiveCell();
-    if (!cell) {
-        insertDropdown.innerHTML = `
-            <div class="dropdown-panel-title">
-                <span>🌐 Cell Borders</span>
-                <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
-            </div>
-            <div style="font-size: 11px; color: #ef4444; text-align: center; margin: 20px 0;">Place cursor inside a table cell to edit borders.</div>
-        `;
-        notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
-        return;
-    }
-    
-    insertDropdown.innerHTML = `
-        <div class="dropdown-panel-title">
-            <span>🌐 Cell Borders</span>
-            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
-        </div>
-        
-        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px;">1. Toggle Side</div>
-        <div class="borders-grid">
-            <button class="border-toggle-btn" data-side="all">All</button>
-            <button class="border-toggle-btn" data-side="none">None</button>
-            <button class="border-toggle-btn" data-side="top">Top</button>
-            <button class="border-toggle-btn" data-side="bottom">Bottom</button>
-            <button class="border-toggle-btn" data-side="left">Left</button>
-            <button class="border-toggle-btn" data-side="right">Right</button>
-        </div>
-        
-        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-top: 8px; margin-bottom: 6px;">2. Border Thickness</div>
-        <div style="display: flex; gap: 4px;">
-            <button class="border-toggle-btn active" data-border-size="1">1px</button>
-            <button class="border-toggle-btn" data-border-size="2">2px</button>
-            <button class="border-toggle-btn" data-border-size="3">3px</button>
-        </div>
-    `;
-    
-    let selectedSize = 1;
-    
-    const sizeBtns = insertDropdown.querySelectorAll('button[data-border-size]');
-    sizeBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            sizeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            selectedSize = parseInt(btn.getAttribute('data-border-size'));
-        });
-    });
-    
-    const sideBtns = insertDropdown.querySelectorAll('button[data-side]');
-    sideBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const side = btn.dataset.side;
-            const borderVal = `${selectedSize}px solid #cbd5e1`;
-            
-            if (side === 'none') {
-                cell.style.border = 'none';
-            } else if (side === 'all') {
-                cell.style.border = borderVal;
-            } else {
-                if (side === 'top') cell.style.borderTop = borderVal;
-                if (side === 'bottom') cell.style.borderBottom = borderVal;
-                if (side === 'left') cell.style.borderLeft = borderVal;
-                if (side === 'right') cell.style.borderRight = borderVal;
-            }
-            triggerAutoSave();
-            insertDropdown.style.display = 'none';
-        });
-    });
-    
-    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
-}
-
-function renderPaddingSelector() {
-    const cell = getActiveCell();
-    if (!cell) {
-        insertDropdown.innerHTML = `
-            <div class="dropdown-panel-title">
-                <span>↕️ Cell Padding</span>
-                <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
-            </div>
-            <div style="font-size: 11px; color: #ef4444; text-align: center; margin: 20px 0;">Place cursor inside a table cell to edit padding.</div>
-        `;
-        notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
-        return;
-    }
-    
-    insertDropdown.innerHTML = `
-        <div class="dropdown-panel-title">
-            <span>↕️ Cell Padding</span>
-            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
-        </div>
-        <div style="font-weight: 500; font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: center;">Select spacing style</div>
-        <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button class="padding-option-btn" data-pad="4px">Compact (4px)</button>
-            <button class="padding-option-btn" data-pad="8px">Normal (8px)</button>
-            <button class="padding-option-btn" data-pad="16px">Spacious (16px)</button>
-        </div>
-    `;
-    
-    const padBtns = insertDropdown.getElementsByClassName('padding-option-btn');
-    for (let btn of padBtns) {
-        btn.addEventListener('click', () => {
-            const table = cell.closest('table');
-            if (table) {
-                const paddingVal = btn.dataset.pad;
-                const cells = table.getElementsByTagName('td');
-                for (let i = 0; i < cells.length; i++) {
-                    cells[i].style.padding = paddingVal;
-                }
-                triggerAutoSave();
-            }
-            insertDropdown.style.display = 'none';
-        });
-    }
-    
-    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
-}
-
 notesRoot.getElementById('image-insert-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
+        restoreSelection();
         const imgHtml = `<img src="${evt.target.result}" style="max-width: 100%; border-radius: 8px; margin: 12px 0;">`;
         document.execCommand('insertHTML', false, imgHtml);
         notesRoot.getElementById('editor-page').focus();
@@ -2064,7 +2111,41 @@ notesRoot.getElementById('doc-title-input').addEventListener('input', (e) => {
     triggerAutoSave();
 });
 
+let savedRange = null;
+
+function saveSelection() {
+    const sel = notesRoot.getSelection();
+    if (sel && sel.rangeCount > 0) {
+        let node = sel.getRangeAt(0).startContainer;
+        let isInsideEditor = false;
+        const editor = notesRoot.getElementById('editor-page');
+        while (node) {
+            if (node === editor) {
+                isInsideEditor = true;
+                break;
+            }
+            node = node.parentNode;
+        }
+        if (isInsideEditor) {
+            savedRange = sel.getRangeAt(0).cloneRange();
+        }
+    }
+}
+
+function restoreSelection() {
+    if (savedRange) {
+        const sel = notesRoot.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+    }
+}
+
+notesRoot.getElementById('editor-page').addEventListener('mouseup', saveSelection);
+notesRoot.getElementById('editor-page').addEventListener('keyup', saveSelection);
+notesRoot.getElementById('editor-page').addEventListener('focus', saveSelection);
+
 notesRoot.getElementById('editor-page').addEventListener('input', () => {
+    saveSelection();
     updateWordAndCharCount();
     triggerAutoSave();
 });
