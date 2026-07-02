@@ -990,15 +990,15 @@ notesRoot.innerHTML = `
             </select>
             <button class="header-btn" id="btn-print-note" title="Print Document">🖨️ Print</button>
             <button class="header-btn" id="btn-share-clipboard" title="Copy to Clipboard">📋 Copy</button>
-            <select class="theme-select" id="export-format-select" title="Export Format" style="font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                <option value="html">💾 HTML</option>
-                <option value="docx">📄 DOCX</option>
-                <option value="pdf">🖨️ PDF</option>
-                <option value="txt">📝 TXT</option>
-                <option value="rtf">📜 RTF</option>
-                <option value="mhtml">📦 MHTML</option>
+            <select class="theme-select" id="export-format-select" title="Export Note" style="font-size: 11px; padding: 4px 8px; border: 1px solid #2563eb; border-radius: 4px; font-weight: bold; background: #2563eb; color: white; cursor: pointer; outline: none; height: 26px;">
+                <option value="" disabled selected>💾 Export</option>
+                <option value="html">HTML</option>
+                <option value="docx">DOCX</option>
+                <option value="pdf">PDF</option>
+                <option value="txt">TXT</option>
+                <option value="rtf">RTF</option>
+                <option value="mhtml">MHTML</option>
             </select>
-            <button class="header-btn" id="btn-export-html" title="Export Document">Export</button>
             <button class="header-btn" id="btn-fullscreen-toggle" title="Maximize Window">⛶ Full Screen</button>
             <a href="#" id="link-close-notes" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: bold; margin-left: 8px;">Close</a>
         </div>
@@ -1066,23 +1066,21 @@ notesRoot.innerHTML = `
                 </div>
                 
                 <div class="toolbar-group">
-                    <button class="toolbar-btn" id="btn-insert-link" title="Insert Link">🔗 Link</button>
-                    <button class="toolbar-btn" id="btn-unlink" title="Remove Link">🔗 Unlink</button>
+                    <select class="toolbar-select" id="insert-menu-select" title="Insert Element" style="font-weight: bold; background: #e2e8f0; color: #0f172a; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; outline: none;">
+                        <option value="" disabled selected>➕ Insert</option>
+                        <option value="table">Table</option>
+                        <option value="image">Image</option>
+                        <option value="line">Line (Divider)</option>
+                        <option value="link">Link</option>
+                        <option value="unlink">Unlink</option>
+                        <option value="border">Cell Borders</option>
+                        <option value="padding">Cell Padding</option>
+                    </select>
                 </div>
                 
                 <div class="toolbar-group">
                     <button class="toolbar-btn" id="btn-list-bullet" title="Bulleted List" data-cmd="insertUnorderedList">• List</button>
                     <button class="toolbar-btn" id="btn-list-number" title="Numbered List" data-cmd="insertOrderedList">1. List</button>
-                </div>
-                
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" id="btn-insert-table" title="Insert Table">➕ Table</button>
-                    <button class="toolbar-btn" id="btn-insert-image" title="Insert Image">🖼️ Image</button>
-                </div>
-                
-                <div class="toolbar-group">
-                    <button class="toolbar-btn" id="btn-table-border" title="Table Border">🌐 Border</button>
-                    <button class="toolbar-btn" id="btn-table-padding" title="Cell Padding">↕️ Padding</button>
                 </div>
                 
                 <button class="toolbar-btn" id="btn-clear-format" title="Clear Formatting" data-cmd="removeFormat">Tx</button>
@@ -1530,8 +1528,7 @@ notesRoot.getElementById('btn-new-note-sidebar').addEventListener('click', () =>
     createBlankNote();
 });
 
-notesRoot.getElementById('btn-insert-table').addEventListener('click', (e) => {
-    e.stopPropagation();
+function insertTableAction() {
     const rows = prompt("Enter number of rows:", "3");
     const cols = prompt("Enter number of columns:", "3");
     if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
@@ -1549,10 +1546,9 @@ notesRoot.getElementById('btn-insert-table').addEventListener('click', (e) => {
     document.execCommand('insertHTML', false, tableHtml);
     notesRoot.getElementById('editor-page').focus();
     triggerAutoSave();
-});
+}
 
-notesRoot.getElementById('btn-insert-image').addEventListener('click', (e) => {
-    e.stopPropagation();
+function insertImageAction() {
     const loadLocal = confirm("Do you want to upload a local image file?\n\n(Click 'Cancel' to enter a Web URL instead)");
     if (loadLocal) {
         notesRoot.getElementById('image-insert-input').click();
@@ -1565,6 +1561,116 @@ notesRoot.getElementById('btn-insert-image').addEventListener('click', (e) => {
             triggerAutoSave();
         }
     }
+}
+
+function insertLineAction() {
+    const type = prompt("Enter line type ('solid', 'dashed', 'dotted', 'double'):", "solid");
+    if (!type || !['solid', 'dashed', 'dotted', 'double'].includes(type.toLowerCase())) {
+        alert("Invalid line type selected.");
+        return;
+    }
+    const thickness = prompt("Enter line thickness (1 to 5):", "2");
+    const thickVal = parseInt(thickness);
+    if (isNaN(thickVal) || thickVal < 1 || thickVal > 5) {
+        alert("Invalid line thickness. Select 1 to 5.");
+        return;
+    }
+    const lineHtml = `<hr style="border: none; border-top: ${thickVal}px ${type.toLowerCase()} #cbd5e1; margin: 16px 0;">`;
+    document.execCommand('insertHTML', false, lineHtml);
+    notesRoot.getElementById('editor-page').focus();
+    triggerAutoSave();
+}
+
+function insertLinkAction() {
+    const url = prompt("Enter hyperlink URL:", "https://");
+    if (url) {
+        document.execCommand('createLink', false, url);
+        notesRoot.getElementById('editor-page').focus();
+        triggerAutoSave();
+    }
+}
+
+function tableBorderAction() {
+    const cell = getActiveCell();
+    if (!cell) {
+        alert("Place cursor inside a table cell to edit borders.");
+        return;
+    }
+    const sidesInput = prompt("Which borders to turn on? (e.g. 'top,bottom', 'left', 'all', 'none'):", "all");
+    if (sidesInput === null) return;
+    const sizeInput = prompt("Border size (1, 2, or 3):", "1");
+    if (sizeInput === null) return;
+    
+    const size = parseInt(sizeInput);
+    if (isNaN(size) || size < 1 || size > 3) {
+        alert("Invalid border size. Select 1, 2, or 3.");
+        return;
+    }
+    
+    const sides = sidesInput.toLowerCase().split(',').map(s => s.trim());
+    const isAll = sides.includes('all');
+    const isNone = sides.includes('none');
+    const borderVal = `${size}px solid #cbd5e1`;
+    
+    if (isNone) {
+        cell.style.border = 'none';
+    } else {
+        if (isAll || sides.includes('top')) cell.style.borderTop = borderVal;
+        else cell.style.borderTop = 'none';
+        
+        if (isAll || sides.includes('bottom')) cell.style.borderBottom = borderVal;
+        else cell.style.borderBottom = 'none';
+        
+        if (isAll || sides.includes('left')) cell.style.borderLeft = borderVal;
+        else cell.style.borderLeft = 'none';
+        
+        if (isAll || sides.includes('right')) cell.style.borderRight = borderVal;
+        else cell.style.borderRight = 'none';
+    }
+    triggerAutoSave();
+}
+
+function tablePaddingAction() {
+    const cell = getActiveCell();
+    if (!cell) {
+        alert("Place cursor inside a table cell to edit cell padding.");
+        return;
+    }
+    const table = cell.closest('table');
+    if (!table) return;
+    const padding = prompt("Enter cell padding (e.g. '4px', '8px', '12px'):", cell.style.padding || "8px");
+    if (padding !== null) {
+        const cells = table.getElementsByTagName('td');
+        for (let i = 0; i < cells.length; i++) {
+            cells[i].style.padding = padding;
+        }
+        triggerAutoSave();
+    }
+}
+
+notesRoot.getElementById('insert-menu-select').addEventListener('change', (e) => {
+    const action = e.target.value;
+    if (!action) return;
+    
+    if (action === 'table') {
+        insertTableAction();
+    } else if (action === 'image') {
+        insertImageAction();
+    } else if (action === 'line') {
+        insertLineAction();
+    } else if (action === 'link') {
+        insertLinkAction();
+    } else if (action === 'unlink') {
+        document.execCommand('unlink', false, null);
+        notesRoot.getElementById('editor-page').focus();
+        triggerAutoSave();
+    } else if (action === 'border') {
+        tableBorderAction();
+    } else if (action === 'padding') {
+        tablePaddingAction();
+    }
+    
+    e.target.value = ""; // Reset dropdown
 });
 
 notesRoot.getElementById('image-insert-input').addEventListener('change', (e) => {
@@ -1654,61 +1760,7 @@ function getActiveCell() {
     return null;
 }
 
-notesRoot.getElementById('btn-insert-link').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const url = prompt("Enter hyperlink URL:", "https://");
-    if (url) {
-        document.execCommand('createLink', false, url);
-        notesRoot.getElementById('editor-page').focus();
-        triggerAutoSave();
-    }
-});
 
-notesRoot.getElementById('btn-unlink').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.execCommand('unlink', false, null);
-    notesRoot.getElementById('editor-page').focus();
-    triggerAutoSave();
-});
-
-notesRoot.getElementById('btn-table-border').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const cell = getActiveCell();
-    if (!cell) {
-        alert("Place cursor inside a table cell to edit table borders.");
-        return;
-    }
-    const table = cell.closest('table');
-    if (!table) return;
-    const border = prompt("Enter border style (e.g. '1px solid #cbd5e1', '2px solid red', 'none'):", table.style.border || "1px solid #cbd5e1");
-    if (border !== null) {
-        table.style.border = border;
-        const cells = table.getElementsByTagName('td');
-        for (let i = 0; i < cells.length; i++) {
-            cells[i].style.border = border;
-        }
-        triggerAutoSave();
-    }
-});
-
-notesRoot.getElementById('btn-table-padding').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const cell = getActiveCell();
-    if (!cell) {
-        alert("Place cursor inside a table cell to edit cell padding.");
-        return;
-    }
-    const table = cell.closest('table');
-    if (!table) return;
-    const padding = prompt("Enter cell padding (e.g. '4px', '8px', '12px'):", cell.style.padding || "8px");
-    if (padding !== null) {
-        const cells = table.getElementsByTagName('td');
-        for (let i = 0; i < cells.length; i++) {
-            cells[i].style.padding = padding;
-        }
-        triggerAutoSave();
-    }
-});
 
 notesRoot.getElementById('note-fg-color').addEventListener('input', (e) => {
     const cell = getActiveCell();
@@ -1743,12 +1795,10 @@ function convertToRTF(html) {
     return rtf;
 }
 
-notesRoot.getElementById('btn-export-html').addEventListener('click', () => {
+function exportNoteAsFormat(format) {
     const curId = myNotesData.currentNoteId;
     if (!curId || !myNotesData.notes[curId]) return;
     const note = myNotesData.notes[curId];
-    
-    const format = notesRoot.getElementById('export-format-select').value;
     const title = note.title || 'Note';
     
     if (format === 'pdf') {
@@ -1794,6 +1844,13 @@ notesRoot.getElementById('btn-export-html').addEventListener('click', () => {
     a.download = `${title}.${extension}`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+notesRoot.getElementById('export-format-select').addEventListener('change', (e) => {
+    const format = e.target.value;
+    if (!format) return;
+    exportNoteAsFormat(format);
+    e.target.value = ""; // Reset dropdown
 });
 
 // Print document
