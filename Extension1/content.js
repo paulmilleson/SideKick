@@ -955,6 +955,9 @@ notesRoot.innerHTML = `
         outline: none; box-sizing: border-box; border-radius: 2px; line-height: 1.6; font-size: 14px;
         transition: background-color 0.2s, color 0.2s;
     }
+    .editor-page table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    .editor-page th, .editor-page td { border: 1px solid #cbd5e1; padding: 8px; vertical-align: top; }
+    .editor-page img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
     
     .footer { padding: 4px 12px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; border-top: 1px solid #cbd5e1; font-size: 11px; color: #64748b; }
 
@@ -997,14 +1000,12 @@ notesRoot.innerHTML = `
         <!-- Sidebar File Manager -->
         <div class="notes-sidebar">
             <button class="new-doc-btn" id="btn-new-note-sidebar">+ New Note</button>
-            <div style="display: flex; gap: 4px;">
-                <button class="header-btn" id="btn-import-file-trigger" style="flex: 1; font-size: 11px;" title="Import file from your PC">📥 Import</button>
-                <button class="header-btn" id="btn-local-folder-trigger" style="flex: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;" title="Open local directory File Manager">
-                    <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#eab308" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/><rect x="4" y="8" width="16" height="10" fill="#0284c7" rx="1"/></svg>
-                    Explorer
-                </button>
-            </div>
+            <button class="header-btn" id="btn-local-folder-trigger" style="width: 100%; font-size: 11px; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;" title="Open files using File Explorer">
+                <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#eab308" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/><rect x="4" y="8" width="16" height="10" fill="#0284c7" rx="1"/></svg>
+                Explorer
+            </button>
             <input type="file" id="file-import-input" style="display: none;">
+            <input type="file" id="image-insert-input" accept="image/*" style="display: none;">
             <div class="notes-list" id="notes-list"></div>
         </div>
         
@@ -1059,6 +1060,11 @@ notesRoot.innerHTML = `
                 <div class="toolbar-group">
                     <button class="toolbar-btn" id="btn-list-bullet" title="Bulleted List" data-cmd="insertUnorderedList">• List</button>
                     <button class="toolbar-btn" id="btn-list-number" title="Numbered List" data-cmd="insertOrderedList">1. List</button>
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="btn-insert-table" title="Insert Table">➕ Table</button>
+                    <button class="toolbar-btn" id="btn-insert-image" title="Insert Image">🖼️ Image</button>
                 </div>
                 
                 <button class="toolbar-btn" id="btn-clear-format" title="Clear Formatting" data-cmd="removeFormat">Tx</button>
@@ -1285,6 +1291,82 @@ function loadNote(id) {
     });
 }
 
+async function parsePDF(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const textDecoder = new TextDecoder('utf-8');
+    let fullText = "";
+    
+    let offset = 0;
+    const streamSig = new TextEncoder().encode("stream\r\n");
+    const streamSig2 = new TextEncoder().encode("stream\n");
+    const endStreamSig = new TextEncoder().encode("endstream");
+    
+    function findBytes(pattern, startOffset) {
+        for (let i = startOffset; i < bytes.length - pattern.length; i++) {
+            let match = true;
+            for (let j = 0; j < pattern.length; j++) {
+                if (bytes[i + j] !== pattern[j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) return i;
+        }
+        return -1;
+    }
+    
+    while (true) {
+        let start = findBytes(streamSig, offset);
+        let sigLen = streamSig.length;
+        if (start === -1) {
+            start = findBytes(streamSig2, offset);
+            sigLen = streamSig2.length;
+        }
+        if (start === -1) break;
+        
+        const end = findBytes(endStreamSig, start + sigLen);
+        if (end === -1) break;
+        
+        const streamData = bytes.slice(start + sigLen, end);
+        offset = end + endStreamSig.length;
+        
+        const headerStart = Math.max(0, start - 200);
+        const headerText = textDecoder.decode(bytes.slice(headerStart, start));
+        
+        if (headerText.includes("/FlateDecode") || headerText.includes("/Fl")) {
+            try {
+                const ds = new DecompressionStream('deflate');
+                const writer = ds.writable.getWriter();
+                writer.write(streamData);
+                writer.close();
+                
+                const response = new Response(ds.readable);
+                const decompressed = await response.arrayBuffer();
+                const decompressedText = new TextDecoder('latin1').decode(decompressed);
+                
+                const textBlocks = decompressedText.match(/BT[\s\S]*?ET/g);
+                if (textBlocks) {
+                    for (const block of textBlocks) {
+                        const regex = /\(([^)]*)\)/g;
+                        let match;
+                        let blockText = "";
+                        while ((match = regex.exec(block)) !== null) {
+                            blockText += match[1];
+                        }
+                        if (blockText.trim()) {
+                            fullText += `<div>${blockText.replace(/\\(.)/g, '$1')}</div>`;
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignore non-deflate streams or decryption errors
+            }
+        }
+    }
+    
+    return fullText || "<div>[Parsed PDF - No text runs found]</div>";
+}
+
 async function convertLocalFileToNote(name, file) {
     let content = '';
     try {
@@ -1292,6 +1374,9 @@ async function convertLocalFileToNote(name, file) {
             const arrayBuffer = await file.arrayBuffer();
             const xmlText = await unzipDocx(arrayBuffer);
             content = parseDocxXML(xmlText);
+        } else if (name.endsWith('.pdf')) {
+            const arrayBuffer = await file.arrayBuffer();
+            content = await parsePDF(arrayBuffer);
         } else {
             const text = await file.text();
             if (name.endsWith('.html')) {
@@ -1427,8 +1512,55 @@ notesRoot.getElementById('btn-new-note-sidebar').addEventListener('click', () =>
     createBlankNote();
 });
 
-notesRoot.getElementById('btn-import-file-trigger').addEventListener('click', () => {
-    notesRoot.getElementById('file-import-input').click();
+notesRoot.getElementById('btn-insert-table').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const rows = prompt("Enter number of rows:", "3");
+    const cols = prompt("Enter number of columns:", "3");
+    if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
+    
+    let tableHtml = `<table style="border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin: 12px 0;">`;
+    for (let r = 0; r < parseInt(rows); r++) {
+        tableHtml += `<tr>`;
+        for (let c = 0; c < parseInt(cols); c++) {
+            tableHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px; vertical-align: top;"><br></td>`;
+        }
+        tableHtml += `</tr>`;
+    }
+    tableHtml += `</table>`;
+    
+    document.execCommand('insertHTML', false, tableHtml);
+    notesRoot.getElementById('editor-page').focus();
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('btn-insert-image').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const loadLocal = confirm("Do you want to upload a local image file?\n\n(Click 'Cancel' to enter a Web URL instead)");
+    if (loadLocal) {
+        notesRoot.getElementById('image-insert-input').click();
+    } else {
+        const url = prompt("Enter Image Web URL:");
+        if (url) {
+            const imgHtml = `<img src="${url}" style="max-width: 100%; border-radius: 8px; margin: 12px 0;">`;
+            document.execCommand('insertHTML', false, imgHtml);
+            notesRoot.getElementById('editor-page').focus();
+            triggerAutoSave();
+        }
+    }
+});
+
+notesRoot.getElementById('image-insert-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+        const imgHtml = `<img src="${evt.target.result}" style="max-width: 100%; border-radius: 8px; margin: 12px 0;">`;
+        document.execCommand('insertHTML', false, imgHtml);
+        notesRoot.getElementById('editor-page').focus();
+        triggerAutoSave();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
 });
 
 notesRoot.getElementById('file-import-input').addEventListener('change', async (e) => {
