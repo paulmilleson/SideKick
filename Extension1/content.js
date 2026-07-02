@@ -988,6 +988,7 @@ notesRoot.innerHTML = `
             <button class="header-btn" id="btn-print-note" title="Print Document">🖨️ Print</button>
             <button class="header-btn" id="btn-share-clipboard" title="Copy to Clipboard">📋 Copy</button>
             <button class="header-btn" id="btn-export-html" title="Download HTML">💾 Export</button>
+            <button class="header-btn" id="btn-fullscreen-toggle" title="Maximize Window">⛶ Full Screen</button>
             <a href="#" id="link-close-notes" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: bold; margin-left: 8px;">Close</a>
         </div>
     </div>
@@ -998,7 +999,10 @@ notesRoot.innerHTML = `
             <button class="new-doc-btn" id="btn-new-note-sidebar">+ New Note</button>
             <div style="display: flex; gap: 4px;">
                 <button class="header-btn" id="btn-import-file-trigger" style="flex: 1; font-size: 11px;" title="Import file from your PC">📥 Import</button>
-                <button class="header-btn" id="btn-local-folder-trigger" style="flex: 1; font-size: 11px;" title="Open local directory File Manager">📁 File Manager</button>
+                <button class="header-btn" id="btn-local-folder-trigger" style="flex: 1; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;" title="Open local directory File Manager">
+                    <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#eab308" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/><rect x="4" y="8" width="16" height="10" fill="#0284c7" rx="1"/></svg>
+                    Explorer
+                </button>
             </div>
             <input type="file" id="file-import-input" accept=".docx,.rtf,.html,.txt" style="display: none;">
             <div class="notes-list" id="notes-list"></div>
@@ -1704,6 +1708,12 @@ notesRoot.getElementById('editor-page').addEventListener('input', () => {
     triggerAutoSave();
 });
 
+notesRoot.getElementById('editor-page').addEventListener('keydown', (e) => {
+    if (e.ctrlKey && ['c', 'v', 'x', 'z', 'a', 'y'].includes(e.key.toLowerCase())) {
+        e.stopPropagation();
+    }
+});
+
 notesRoot.getElementById('theme-select').addEventListener('change', (e) => {
     const theme = e.target.value;
     const container = notesRoot.getElementById('notes-container');
@@ -1832,9 +1842,42 @@ notesRoot.getElementById('btn-share-clipboard').addEventListener('click', () => 
     }
 });
 
+let isFullscreen = false;
+const defaultStyles = {
+    position: 'fixed', bottom: '90px', right: '20px', width: '768px', height: '576px',
+    zIndex: '2147483647', boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+    borderRadius: '16px', overflow: 'hidden', backgroundColor: '#f1f5f9',
+    top: 'auto', left: 'auto'
+};
+const fullscreenStyles = {
+    position: 'fixed', top: '0px', left: '0px', right: '0px', bottom: '0px',
+    width: '100vw', height: '100vh', zIndex: '2147483647', boxShadow: 'none',
+    borderRadius: '0px', overflow: 'hidden', backgroundColor: '#f1f5f9'
+};
+
+notesRoot.getElementById('btn-fullscreen-toggle').addEventListener('click', () => {
+    isFullscreen = !isFullscreen;
+    const targetStyles = isFullscreen ? fullscreenStyles : defaultStyles;
+    Object.assign(notesHost.style, targetStyles);
+    
+    const btn = notesRoot.getElementById('btn-fullscreen-toggle');
+    if (btn) {
+        btn.innerText = isFullscreen ? '🗗 Shrink' : '⛶ Full Screen';
+        btn.title = isFullscreen ? 'Shrink Window' : 'Maximize Window';
+    }
+});
+
 notesRoot.getElementById('link-close-notes').addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isFullscreen) {
+        isFullscreen = false;
+        Object.assign(notesHost.style, defaultStyles);
+        const btn = notesRoot.getElementById('btn-fullscreen-toggle');
+        if (btn) {
+            btn.innerText = '⛶ Full Screen';
+        }
+    }
     notesHost.style.display = 'none';
     navPanel.style.display = 'flex';
 });
