@@ -1075,6 +1075,58 @@ notesRoot.innerHTML = `
 </div>
 `;
 
+function storeDirectoryHandle(handle) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open("SideKickLocalFS", 1);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            db.createObjectStore("handles");
+        };
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction("handles", "readwrite");
+            const store = tx.objectStore("handles");
+            store.put(handle, "rootHandle");
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        };
+        request.onerror = (e) => reject(request.error);
+    });
+}
+
+function loadDirectoryHandle() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open("SideKickLocalFS", 1);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            db.createObjectStore("handles");
+        };
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction("handles", "readonly");
+            const store = tx.objectStore("handles");
+            const getReq = store.get("rootHandle");
+            getReq.onsuccess = () => resolve(getReq.result);
+            getReq.onerror = () => reject(getReq.error);
+        };
+        request.onerror = (e) => reject(request.error);
+    });
+}
+
+async function verifyPermission(handle, readWrite) {
+    const options = {};
+    if (readWrite) {
+        options.mode = 'readwrite';
+    }
+    if ((await handle.queryPermission(options)) === 'granted') {
+        return true;
+    }
+    if ((await handle.requestPermission(options)) === 'granted') {
+        return true;
+    }
+    return false;
+}
+
 let myNotesData = {
     currentNoteId: '',
     notes: {}
@@ -1082,6 +1134,8 @@ let myNotesData = {
 
 let autoSaveTimeout = null;
 let localDirHandle = null;
+let currentDirHandle = null;
+let dirHistory = [];
 let localNotes = {};
 
 function parseRTF(rtfText) {
@@ -1295,22 +1349,34 @@ async function loadLocalNote(id) {
 }
 
 async function scanLocalDirectory() {
-    if (!localDirHandle) return;
+    if (!currentDirHandle) return;
     localNotes = {};
-    for await (const entry of localDirHandle.values()) {
-        if (entry.kind === 'file') {
-            const name = entry.name;
-            if (name.endsWith('.txt') || name.endsWith('.html') || name.endsWith('.rtf') || name.endsWith('.docx')) {
-                const file = await entry.getFile();
-                const id = 'local-' + name;
+    try {
+        for await (const entry of currentDirHandle.values()) {
+            const id = 'local-' + entry.name;
+            if (entry.kind === 'directory') {
                 localNotes[id] = {
                     id,
-                    title: name,
-                    handle: entry,
-                    lastModified: file.lastModified
+                    title: entry.name,
+                    kind: 'directory',
+                    handle: entry
                 };
+            } else if (entry.kind === 'file') {
+                const name = entry.name;
+                if (name.endsWith('.txt') || name.endsWith('.html') || name.endsWith('.rtf') || name.endsWith('.docx')) {
+                    const file = await entry.getFile();
+                    localNotes[id] = {
+                        id,
+                        title: name,
+                        kind: 'file',
+                        handle: entry,
+                        lastModified: file.lastModified
+                    };
+                }
             }
         }
+    } catch (e) {
+        console.error("Failed to scan directory:", e);
     }
 }
 
@@ -1388,24 +1454,171 @@ function renderNotesList() {
         listContainer.appendChild(item);
     });
     
-    if (localDirHandle) {
-        const localHeader = document.createElement('div');
-        localHeader.style.cssText = 'font-size: 11px; font-weight: bold; color: #64748b; margin-top: 16px; margin-bottom: 4px;';
-        localHeader.innerText = 'LOCAL FILES (' + localDirHandle.name + ')';
-        listContainer.appendChild(localHeader);
+    const localHeader = document.createElement('div');
+    localHeader.style.cssText = 'font-size: 11px; font-weight: bold; color: #64748b; margin-top: 16px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center;';
+    localHeader.innerText = 'LOCAL FILES';
+    listContainer.appendChild(localHeader);
+    
+    if (!localDirHandle) {
+        const connectBtn = document.createElement('button');
+        connectBtn.className = 'header-btn';
+        connectBtn.style.cssText = 'width: 100%; font-size: 11px; margin-top: 4px; padding: 6px;';
+        connectBtn.innerText = '🔌 Connect Drive / Folder';
+        connectBtn.addEventListener('click', async () => {
+            try {
+                const handle = await window.showDirectoryPicker();
+                localDirHandle = handle;
+                currentDirHandle = handle;
+                dirHistory = [];
+                await storeDirectoryHandle(handle);
+                await scanLocalDirectory();
+                renderNotesList();
+            } catch (err) {
+                console.error("Failed to connect drive:", err);
+            }
+        });
+        listContainer.appendChild(connectBtn);
+        return;
+    }
+    
+    localDirHandle.queryPermission().then(perm => {
+        if (perm !== 'granted') {
+            const grantBtn = document.createElement('button');
+            grantBtn.className = 'new-doc-btn';
+            grantBtn.style.cssText = 'width: 100%; font-size: 11px; margin-top: 4px; padding: 8px; background: #eab308;';
+            grantBtn.innerText = `🔓 Grant Access to ${localDirHandle.name}`;
+            grantBtn.addEventListener('click', async () => {
+                const ok = await verifyPermission(localDirHandle, false);
+                if (ok) {
+                    currentDirHandle = localDirHandle;
+                    dirHistory = [];
+                    await scanLocalDirectory();
+                    renderNotesList();
+                }
+            });
+            listContainer.appendChild(grantBtn);
+            
+            const disconnectBtn = document.createElement('button');
+            disconnectBtn.className = 'header-btn';
+            disconnectBtn.style.cssText = 'width: 100%; font-size: 10px; margin-top: 4px; border-color: #ef4444; color: #ef4444;';
+            disconnectBtn.innerText = 'Disconnect Drive';
+            disconnectBtn.addEventListener('click', async () => {
+                localDirHandle = null;
+                currentDirHandle = null;
+                dirHistory = [];
+                const dbReq = indexedDB.open("SideKickLocalFS", 1);
+                dbReq.onsuccess = (e) => {
+                    const db = e.target.result;
+                    db.transaction("handles", "readwrite").objectStore("handles").delete("rootHandle");
+                };
+                renderNotesList();
+            });
+            listContainer.appendChild(disconnectBtn);
+            return;
+        }
         
-        const lNotes = Object.values(localNotes).sort((a, b) => b.lastModified - a.lastModified);
-        if (lNotes.length === 0) {
+        const pathControl = document.createElement('div');
+        pathControl.style.cssText = 'display: flex; align-items: center; gap: 4px; margin-bottom: 6px; background: #e2e8f0; border-radius: 4px; padding: 2px 4px;';
+        
+        const upBtn = document.createElement('button');
+        upBtn.className = 'header-btn';
+        upBtn.style.cssText = 'padding: 2px 6px; font-size: 11px; font-weight: bold;';
+        upBtn.innerText = '⬆️ Up';
+        if (dirHistory.length === 0) {
+            upBtn.disabled = true;
+            upBtn.style.opacity = '0.5';
+        } else {
+            upBtn.addEventListener('click', async () => {
+                currentDirHandle = dirHistory.pop();
+                await scanLocalDirectory();
+                renderNotesList();
+            });
+        }
+        
+        const currentPathSpan = document.createElement('span');
+        currentPathSpan.style.cssText = 'font-size: 10px; font-weight: bold; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;';
+        currentPathSpan.innerText = currentDirHandle.name;
+        currentPathSpan.title = currentDirHandle.name;
+        
+        const discBtn = document.createElement('button');
+        discBtn.style.cssText = 'border: none; background: transparent; cursor: pointer; font-size: 10px; padding: 2px;';
+        discBtn.innerText = '❌';
+        discBtn.title = 'Disconnect Drive';
+        discBtn.addEventListener('click', async () => {
+            localDirHandle = null;
+            currentDirHandle = null;
+            dirHistory = [];
+            const dbReq = indexedDB.open("SideKickLocalFS", 1);
+            dbReq.onsuccess = (e) => {
+                const db = e.target.result;
+                db.transaction("handles", "readwrite").objectStore("handles").delete("rootHandle");
+            };
+            renderNotesList();
+        });
+        
+        pathControl.appendChild(upBtn);
+        pathControl.appendChild(currentPathSpan);
+        pathControl.appendChild(discBtn);
+        listContainer.appendChild(pathControl);
+        
+        const sortedEntries = Object.values(localNotes).sort((a, b) => {
+            if (a.kind === 'directory' && b.kind === 'file') return -1;
+            if (a.kind === 'file' && b.kind === 'directory') return 1;
+            return a.title.localeCompare(b.title);
+        });
+        
+        if (sortedEntries.length === 0) {
             const empty = document.createElement('div');
             empty.style.cssText = 'font-size: 10px; color: #94a3b8; font-style: italic; padding: 4px;';
-            empty.innerText = 'No compatible files found.';
+            empty.innerText = 'Empty directory';
             listContainer.appendChild(empty);
         }
-        lNotes.forEach(note => {
-            const item = createNoteItemElement(note, true);
+        
+        sortedEntries.forEach(entry => {
+            const item = document.createElement('div');
+            item.className = 'note-item';
+            item.style.cssText = entry.kind === 'directory' ? 'border-left: 3px solid #eab308;' : 'border-left: 3px solid #3b82f6;';
+            item.setAttribute('data-id', entry.id);
+            
+            item.addEventListener('click', async () => {
+                if (entry.kind === 'directory') {
+                    dirHistory.push(currentDirHandle);
+                    currentDirHandle = entry.handle;
+                    await scanLocalDirectory();
+                    renderNotesList();
+                } else {
+                    try {
+                        const file = await entry.handle.getFile();
+                        await convertLocalFileToNote(entry.title, file);
+                    } catch (err) {
+                        console.error(err);
+                        alert("Permission denied or failed to open local file.");
+                    }
+                }
+            });
+            
+            const info = document.createElement('div');
+            info.className = 'note-item-info';
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'note-item-title';
+            titleSpan.innerText = (entry.kind === 'directory' ? '📁 ' : '📄 ') + entry.title;
+            
+            info.appendChild(titleSpan);
+            
+            if (entry.kind === 'file') {
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'note-item-date';
+                const date = new Date(entry.lastModified);
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                dateSpan.innerText = `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+                info.appendChild(dateSpan);
+            }
+            
+            item.appendChild(info);
             listContainer.appendChild(item);
         });
-    }
+    });
 }
 
 function deleteNoteById(id) {
@@ -1457,13 +1670,23 @@ notesRoot.getElementById('file-import-input').addEventListener('change', async (
 });
 
 notesRoot.getElementById('btn-local-folder-trigger').addEventListener('click', async () => {
-    try {
-        localDirHandle = await window.showDirectoryPicker();
-        localNotes = {};
+    if (!localDirHandle) {
+        try {
+            const handle = await window.showDirectoryPicker();
+            localDirHandle = handle;
+            currentDirHandle = handle;
+            dirHistory = [];
+            await storeDirectoryHandle(handle);
+            await scanLocalDirectory();
+            renderNotesList();
+        } catch (err) {
+            console.error("Directory picker canceled or failed:", err);
+        }
+    } else {
+        currentDirHandle = localDirHandle;
+        dirHistory = [];
         await scanLocalDirectory();
         renderNotesList();
-    } catch (err) {
-        console.error("Directory picker canceled or failed:", err);
     }
 });
 
@@ -1616,15 +1839,30 @@ notesRoot.getElementById('link-close-notes').addEventListener('click', (e) => {
     navPanel.style.display = 'flex';
 });
 
-// Load storage notes
-chrome.storage.local.get(['myNotesData'], (result) => {
+// Load storage notes and IndexedDB local directory handle
+chrome.storage.local.get(['myNotesData'], async (result) => {
     if (result.myNotesData && result.myNotesData.notes && Object.keys(result.myNotesData.notes).length > 0) {
         myNotesData = result.myNotesData;
         loadNote(myNotesData.currentNoteId || Object.keys(myNotesData.notes)[0]);
-        renderNotesList();
     } else {
         createBlankNote('Welcome to My Notes');
     }
+    
+    try {
+        const handle = await loadDirectoryHandle();
+        if (handle) {
+            localDirHandle = handle;
+            currentDirHandle = handle;
+            dirHistory = [];
+            const perm = await handle.queryPermission();
+            if (perm === 'granted') {
+                await scanLocalDirectory();
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load root handle on startup:", e);
+    }
+    renderNotesList();
 });
 
 const paletteColors = [
