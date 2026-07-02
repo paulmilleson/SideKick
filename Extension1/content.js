@@ -990,7 +990,15 @@ notesRoot.innerHTML = `
             </select>
             <button class="header-btn" id="btn-print-note" title="Print Document">🖨️ Print</button>
             <button class="header-btn" id="btn-share-clipboard" title="Copy to Clipboard">📋 Copy</button>
-            <button class="header-btn" id="btn-export-html" title="Download HTML">💾 Export</button>
+            <select class="theme-select" id="export-format-select" title="Export Format" style="font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                <option value="html">💾 HTML</option>
+                <option value="docx">📄 DOCX</option>
+                <option value="pdf">🖨️ PDF</option>
+                <option value="txt">📝 TXT</option>
+                <option value="rtf">📜 RTF</option>
+                <option value="mhtml">📦 MHTML</option>
+            </select>
+            <button class="header-btn" id="btn-export-html" title="Export Document">Export</button>
             <button class="header-btn" id="btn-fullscreen-toggle" title="Maximize Window">⛶ Full Screen</button>
             <a href="#" id="link-close-notes" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: bold; margin-left: 8px;">Close</a>
         </div>
@@ -1058,6 +1066,11 @@ notesRoot.innerHTML = `
                 </div>
                 
                 <div class="toolbar-group">
+                    <button class="toolbar-btn" id="btn-insert-link" title="Insert Link">🔗 Link</button>
+                    <button class="toolbar-btn" id="btn-unlink" title="Remove Link">🔗 Unlink</button>
+                </div>
+                
+                <div class="toolbar-group">
                     <button class="toolbar-btn" id="btn-list-bullet" title="Bulleted List" data-cmd="insertUnorderedList">• List</button>
                     <button class="toolbar-btn" id="btn-list-number" title="Numbered List" data-cmd="insertOrderedList">1. List</button>
                 </div>
@@ -1065,6 +1078,11 @@ notesRoot.innerHTML = `
                 <div class="toolbar-group">
                     <button class="toolbar-btn" id="btn-insert-table" title="Insert Table">➕ Table</button>
                     <button class="toolbar-btn" id="btn-insert-image" title="Insert Image">🖼️ Image</button>
+                </div>
+                
+                <div class="toolbar-group">
+                    <button class="toolbar-btn" id="btn-table-border" title="Table Border">🌐 Border</button>
+                    <button class="toolbar-btn" id="btn-table-padding" title="Cell Padding">↕️ Padding</button>
                 </div>
                 
                 <button class="toolbar-btn" id="btn-clear-format" title="Clear Formatting" data-cmd="removeFormat">Tx</button>
@@ -1623,26 +1641,157 @@ notesRoot.getElementById('font-size-select').addEventListener('change', (e) => {
     triggerAutoSave();
 });
 
+function getActiveCell() {
+    const sel = notesRoot.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    let node = sel.getRangeAt(0).startContainer;
+    while (node && node !== notesRoot.getElementById('editor-page')) {
+        if (node.nodeName === 'TD') {
+            return node;
+        }
+        node = node.parentNode;
+    }
+    return null;
+}
+
+notesRoot.getElementById('btn-insert-link').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const url = prompt("Enter hyperlink URL:", "https://");
+    if (url) {
+        document.execCommand('createLink', false, url);
+        notesRoot.getElementById('editor-page').focus();
+        triggerAutoSave();
+    }
+});
+
+notesRoot.getElementById('btn-unlink').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.execCommand('unlink', false, null);
+    notesRoot.getElementById('editor-page').focus();
+    triggerAutoSave();
+});
+
+notesRoot.getElementById('btn-table-border').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cell = getActiveCell();
+    if (!cell) {
+        alert("Place cursor inside a table cell to edit table borders.");
+        return;
+    }
+    const table = cell.closest('table');
+    if (!table) return;
+    const border = prompt("Enter border style (e.g. '1px solid #cbd5e1', '2px solid red', 'none'):", table.style.border || "1px solid #cbd5e1");
+    if (border !== null) {
+        table.style.border = border;
+        const cells = table.getElementsByTagName('td');
+        for (let i = 0; i < cells.length; i++) {
+            cells[i].style.border = border;
+        }
+        triggerAutoSave();
+    }
+});
+
+notesRoot.getElementById('btn-table-padding').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const cell = getActiveCell();
+    if (!cell) {
+        alert("Place cursor inside a table cell to edit cell padding.");
+        return;
+    }
+    const table = cell.closest('table');
+    if (!table) return;
+    const padding = prompt("Enter cell padding (e.g. '4px', '8px', '12px'):", cell.style.padding || "8px");
+    if (padding !== null) {
+        const cells = table.getElementsByTagName('td');
+        for (let i = 0; i < cells.length; i++) {
+            cells[i].style.padding = padding;
+        }
+        triggerAutoSave();
+    }
+});
+
 notesRoot.getElementById('note-fg-color').addEventListener('input', (e) => {
-    document.execCommand('foreColor', false, e.target.value);
+    const cell = getActiveCell();
+    if (cell) {
+        cell.style.color = e.target.value;
+    } else {
+        document.execCommand('foreColor', false, e.target.value);
+    }
     triggerAutoSave();
 });
 
 notesRoot.getElementById('note-bg-color').addEventListener('input', (e) => {
-    document.execCommand('hiliteColor', false, e.target.value);
+    const cell = getActiveCell();
+    if (cell) {
+        cell.style.backgroundColor = e.target.value;
+    } else {
+        document.execCommand('hiliteColor', false, e.target.value);
+    }
     triggerAutoSave();
 });
 
-// Export HTML
+function convertToRTF(html) {
+    let rtf = "{\\rtf1\\ansi\\deff0\n";
+    let text = html;
+    text = text.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, "\\b $1\\b0 ");
+    text = text.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, "\\i $1\\i0 ");
+    text = text.replace(/<br[^>]*>/gi, "\\par\n");
+    text = text.replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, "$1\\par\n");
+    text = text.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, "$1\\par\n");
+    text = text.replace(/<[^>]*>/g, "");
+    rtf += text + "\n}";
+    return rtf;
+}
+
 notesRoot.getElementById('btn-export-html').addEventListener('click', () => {
     const curId = myNotesData.currentNoteId;
     if (!curId || !myNotesData.notes[curId]) return;
     const note = myNotesData.notes[curId];
-    const blob = new Blob([note.content], { type: 'text/html' });
+    
+    const format = notesRoot.getElementById('export-format-select').value;
+    const title = note.title || 'Note';
+    
+    if (format === 'pdf') {
+        alert("To export as PDF, select 'Save as PDF' as the Destination in the Print window.");
+        notesRoot.getElementById('btn-print-note').click();
+        return;
+    }
+    
+    let blobType = 'text/plain';
+    let extension = 'txt';
+    let fileContent = '';
+    
+    if (format === 'html') {
+        blobType = 'text/html';
+        extension = 'html';
+        fileContent = note.content;
+    } else if (format === 'txt') {
+        blobType = 'text/plain';
+        extension = 'txt';
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = note.content;
+        fileContent = tempDiv.innerText;
+    } else if (format === 'rtf') {
+        blobType = 'application/rtf';
+        extension = 'rtf';
+        fileContent = convertToRTF(note.content);
+    } else if (format === 'docx') {
+        blobType = 'application/msword';
+        extension = 'docx';
+        const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><title>${title}</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--></head><body>`;
+        const footer = `</body></html>`;
+        fileContent = header + note.content + footer;
+    } else if (format === 'mhtml') {
+        blobType = 'message/rfc822';
+        extension = 'mhtml';
+        fileContent = "MIME-Version: 1.0\nContent-Type: multipart/related; boundary=\"next-part\"\n\n--next-part\nContent-Type: text/html; charset=\"utf-8\"\n\n" + note.content + "\n\n--next-part--";
+    }
+    
+    const blob = new Blob([fileContent], { type: blobType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${note.title || 'Note'}.html`;
+    a.download = `${title}.${extension}`;
     a.click();
     URL.revokeObjectURL(url);
 });
