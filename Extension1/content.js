@@ -973,6 +973,40 @@ notesRoot.innerHTML = `
     
     .theme-ocean .editor-wrapper { background: #e0f2fe; }
     .theme-ocean .editor-page { background: #ffffff; color: #0369a1; }
+    
+    /* Visual Insert Dropdown Styles */
+    .insert-menu-container { position: relative; display: inline-block; }
+    .dropdown-panel {
+        display: none; position: absolute; top: 100%; left: 0; background: white;
+        border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        z-index: 1000; width: 280px; padding: 12px; font-family: inherit; font-size: 13px; color: #1e293b;
+        text-align: left;
+    }
+    .dropdown-panel-title { font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* Table sub-panel grid style */
+    .grid-container { display: grid; grid-template-columns: repeat(5, 24px); gap: 4px; margin-bottom: 8px; justify-content: center; }
+    .grid-square { width: 24px; height: 24px; border: 1px solid #cbd5e1; border-radius: 3px; cursor: pointer; transition: background 0.15s; }
+    .grid-square.highlighted { background: #3b82f6; border-color: #2563eb; }
+    
+    /* Divider styles */
+    .divider-option { display: flex; align-items: center; justify-content: space-between; padding: 6px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 4px; cursor: pointer; transition: background 0.15s; }
+    .divider-option:hover { background: #f1f5f9; }
+    
+    /* Borders styles */
+    .borders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+    .border-toggle-btn { background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500; text-align: center; color: #1e293b; }
+    .border-toggle-btn:hover { background: #e2e8f0; }
+    .border-toggle-btn.active { background: #2563eb; color: white; border-color: #1d4ed8; }
+    
+    /* Thickness options styles */
+    .thickness-option { display: flex; align-items: center; justify-content: space-between; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 4px; cursor: pointer; }
+    .thickness-option:hover { background: #f1f5f9; }
+    .thickness-option.active { border-color: #2563eb; background: #eff6ff; }
+    
+    /* Padding selector buttons */
+    .padding-option-btn { background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 4px; cursor: pointer; text-align: center; flex: 1; font-size: 11px; color: #1e293b; }
+    .padding-option-btn:hover { background: #e2e8f0; }
 </style>
 <div class="notes-container theme-light" id="notes-container">
     <div class="header">
@@ -1066,16 +1100,14 @@ notesRoot.innerHTML = `
                 </div>
                 
                 <div class="toolbar-group">
-                    <select class="toolbar-select" id="insert-menu-select" title="Insert Element" style="font-weight: bold; background: #e2e8f0; color: #0f172a; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; outline: none;">
-                        <option value="" disabled selected>➕ Insert</option>
-                        <option value="table">Table</option>
-                        <option value="image">Image</option>
-                        <option value="line">Line (Divider)</option>
-                        <option value="link">Link</option>
-                        <option value="unlink">Unlink</option>
-                        <option value="border">Cell Borders</option>
-                        <option value="padding">Cell Padding</option>
-                    </select>
+                    <div class="insert-menu-container">
+                        <button class="header-btn" id="btn-insert-dropdown" style="font-weight: bold; background: #cbd5e1; color: #0f172a; display: flex; align-items: center; gap: 4px; height: 26px; font-size: 11px; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            ➕ Insert <span style="font-size: 8px;">▼</span>
+                        </button>
+                        <div id="insert-menu-dropdown" class="dropdown-panel">
+                            <!-- Graphical Menu Rendered in Javascript -->
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="toolbar-group">
@@ -1648,30 +1680,356 @@ function tablePaddingAction() {
     }
 }
 
-notesRoot.getElementById('insert-menu-select').addEventListener('change', (e) => {
-    const action = e.target.value;
-    if (!action) return;
+const insertDropdown = notesRoot.getElementById('insert-menu-dropdown');
+
+notesRoot.getElementById('btn-insert-dropdown').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = insertDropdown.style.display === 'block';
+    if (!isVisible) {
+        insertDropdown.style.display = 'block';
+        renderInsertMainMenu();
+    } else {
+        insertDropdown.style.display = 'none';
+    }
+});
+
+document.addEventListener('click', () => {
+    if (insertDropdown) insertDropdown.style.display = 'none';
+});
+
+if (insertDropdown) {
+    insertDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+function renderInsertMainMenu() {
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">Insert Element</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <button class="border-toggle-btn" id="menu-opt-table" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">📊 Table Grid</button>
+            <button class="border-toggle-btn" id="menu-opt-image" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🖼️ Image Uploader</button>
+            <button class="border-toggle-btn" id="menu-opt-line" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">➖ Divider Line</button>
+            <button class="border-toggle-btn" id="menu-opt-link" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🔗 Hyperlink</button>
+            <button class="border-toggle-btn" id="menu-opt-unlink" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🔗 Remove Link</button>
+            <button class="border-toggle-btn" id="menu-opt-border" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">🌐 Cell Borders</button>
+            <button class="border-toggle-btn" id="menu-opt-padding" style="text-align: left; width: 100%; display: flex; align-items: center; gap: 8px;">↕️ Cell Padding</button>
+        </div>
+    `;
     
-    if (action === 'table') {
-        insertTableAction();
-    } else if (action === 'image') {
-        insertImageAction();
-    } else if (action === 'line') {
-        insertLineAction();
-    } else if (action === 'link') {
-        insertLinkAction();
-    } else if (action === 'unlink') {
+    notesRoot.getElementById('menu-opt-table').addEventListener('click', renderTableGridSelector);
+    notesRoot.getElementById('menu-opt-image').addEventListener('click', renderImageSelector);
+    notesRoot.getElementById('menu-opt-line').addEventListener('click', renderLineSelector);
+    notesRoot.getElementById('menu-opt-link').addEventListener('click', renderLinkSelector);
+    notesRoot.getElementById('menu-opt-unlink').addEventListener('click', () => {
         document.execCommand('unlink', false, null);
         notesRoot.getElementById('editor-page').focus();
         triggerAutoSave();
-    } else if (action === 'border') {
-        tableBorderAction();
-    } else if (action === 'padding') {
-        tablePaddingAction();
+        insertDropdown.style.display = 'none';
+    });
+    notesRoot.getElementById('menu-opt-border').addEventListener('click', renderBorderSelector);
+    notesRoot.getElementById('menu-opt-padding').addEventListener('click', renderPaddingSelector);
+}
+
+function renderTableGridSelector() {
+    let selectedRows = 0;
+    let selectedCols = 0;
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">
+            <span>📊 Create Table</span>
+            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+        </div>
+        <div id="table-dimensions-label" style="font-weight: 500; font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: center;">Move mouse to select size</div>
+        <div class="grid-container" id="grid-container"></div>
+    `;
+    
+    const container = notesRoot.getElementById('grid-container');
+    const label = notesRoot.getElementById('table-dimensions-label');
+    
+    for (let r = 1; r <= 5; r++) {
+        for (let c = 1; c <= 5; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-square';
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            container.appendChild(cell);
+            
+            cell.addEventListener('mouseover', () => {
+                selectedRows = r;
+                selectedCols = c;
+                label.innerText = `Table size: ${selectedCols} columns x ${selectedRows} rows`;
+                const squares = container.getElementsByClassName('grid-square');
+                for (let sq of squares) {
+                    const sr = parseInt(sq.dataset.row);
+                    const sc = parseInt(sq.dataset.col);
+                    if (sr <= r && sc <= c) {
+                        sq.classList.add('highlighted');
+                    } else {
+                        sq.classList.remove('highlighted');
+                    }
+                }
+            });
+            
+            cell.addEventListener('click', () => {
+                let tableHtml = `<table style="border-collapse: collapse; width: 100%; border: 1px solid #cbd5e1; margin: 12px 0;">`;
+                for (let rowIdx = 0; rowIdx < selectedRows; rowIdx++) {
+                    tableHtml += `<tr>`;
+                    for (let colIdx = 0; colIdx < selectedCols; colIdx++) {
+                        tableHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px; vertical-align: top;"><br></td>`;
+                    }
+                    tableHtml += `</tr>`;
+                }
+                tableHtml += `</table>`;
+                document.execCommand('insertHTML', false, tableHtml);
+                notesRoot.getElementById('editor-page').focus();
+                triggerAutoSave();
+                insertDropdown.style.display = 'none';
+            });
+        }
     }
     
-    e.target.value = ""; // Reset dropdown
-});
+    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+}
+
+function renderImageSelector() {
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">
+            <span>🖼️ Insert Image</span>
+            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+        </div>
+        <button class="new-doc-btn" id="img-menu-upload" style="width: 100%; margin-bottom: 8px; font-size: 11px;">📂 Upload Local File</button>
+        <div style="border-top: 1px solid #e2e8f0; margin: 8px 0; padding-top: 8px;">
+            <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px;">Paste Web Image URL</div>
+            <input type="text" id="img-menu-url" placeholder="https://example.com/image.png" style="width: 100%; font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px;">
+            <button class="new-doc-btn" id="img-menu-url-submit" style="width: 100%; font-size: 11px; background: #10b981;">Insert Link</button>
+        </div>
+    `;
+    
+    notesRoot.getElementById('img-menu-upload').addEventListener('click', () => {
+        notesRoot.getElementById('image-insert-input').click();
+        insertDropdown.style.display = 'none';
+    });
+    
+    notesRoot.getElementById('img-menu-url-submit').addEventListener('click', () => {
+        const url = notesRoot.getElementById('img-menu-url').value;
+        if (url) {
+            const imgHtml = `<img src="${url}" style="max-width: 100%; border-radius: 8px; margin: 12px 0;">`;
+            document.execCommand('insertHTML', false, imgHtml);
+            notesRoot.getElementById('editor-page').focus();
+            triggerAutoSave();
+        }
+        insertDropdown.style.display = 'none';
+    });
+    
+    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+}
+
+function renderLineSelector() {
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">
+            <span>➖ Divider Line</span>
+            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+        </div>
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px;">1. Select Style</div>
+        <div class="divider-option" data-style="solid">
+            <span>Solid</span>
+            <div style="width: 120px; border-top: 2px solid #64748b;"></div>
+        </div>
+        <div class="divider-option" data-style="dashed">
+            <span>Dashed</span>
+            <div style="width: 120px; border-top: 2px dashed #64748b;"></div>
+        </div>
+        <div class="divider-option" data-style="dotted">
+            <span>Dotted</span>
+            <div style="width: 120px; border-top: 2px dotted #64748b;"></div>
+        </div>
+        <div class="divider-option" data-style="double">
+            <span>Double</span>
+            <div style="width: 120px; border-top: 4px double #64748b;"></div>
+        </div>
+        
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-top: 8px; margin-bottom: 4px;">2. Select Thickness</div>
+        <div style="display: flex; gap: 4px;">
+            <button class="border-toggle-btn active" data-thick="1">1px</button>
+            <button class="border-toggle-btn" data-thick="2">2px</button>
+            <button class="border-toggle-btn" data-thick="3">3px</button>
+            <button class="border-toggle-btn" data-thick="4">4px</button>
+            <button class="border-toggle-btn" data-thick="5">5px</button>
+        </div>
+    `;
+    
+    let selectedStyle = 'solid';
+    let selectedThick = 2;
+    
+    const styleOptions = insertDropdown.getElementsByClassName('divider-option');
+    for (let opt of styleOptions) {
+        opt.addEventListener('click', () => {
+            selectedStyle = opt.dataset.style;
+            const lineHtml = `<hr style="border: none; border-top: ${selectedThick}px ${selectedStyle} #cbd5e1; margin: 16px 0;">`;
+            document.execCommand('insertHTML', false, lineHtml);
+            notesRoot.getElementById('editor-page').focus();
+            triggerAutoSave();
+            insertDropdown.style.display = 'none';
+        });
+    }
+    
+    const thickBtns = insertDropdown.querySelectorAll('button[data-thick]');
+    thickBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            thickBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedThick = parseInt(btn.dataset.thick);
+        });
+    });
+    
+    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+}
+
+function renderLinkSelector() {
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">
+            <span>🔗 Insert Link</span>
+            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+        </div>
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px;">Hyperlink Web URL</div>
+        <input type="text" id="link-menu-url" value="https://" style="width: 100%; font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 8px;">
+        <button class="new-doc-btn" id="link-menu-submit" style="width: 100%; font-size: 11px;">Insert Link</button>
+    `;
+    
+    notesRoot.getElementById('link-menu-submit').addEventListener('click', () => {
+        const url = notesRoot.getElementById('link-menu-url').value;
+        if (url) {
+            document.execCommand('createLink', false, url);
+            notesRoot.getElementById('editor-page').focus();
+            triggerAutoSave();
+        }
+        insertDropdown.style.display = 'none';
+    });
+    
+    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+}
+
+function renderBorderSelector() {
+    const cell = getActiveCell();
+    if (!cell) {
+        insertDropdown.innerHTML = `
+            <div class="dropdown-panel-title">
+                <span>🌐 Cell Borders</span>
+                <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+            </div>
+            <div style="font-size: 11px; color: #ef4444; text-align: center; margin: 20px 0;">Place cursor inside a table cell to edit borders.</div>
+        `;
+        notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+        return;
+    }
+    
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">
+            <span>🌐 Cell Borders</span>
+            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+        </div>
+        
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px;">1. Toggle Side</div>
+        <div class="borders-grid">
+            <button class="border-toggle-btn" data-side="all">All</button>
+            <button class="border-toggle-btn" data-side="none">None</button>
+            <button class="border-toggle-btn" data-side="top">Top</button>
+            <button class="border-toggle-btn" data-side="bottom">Bottom</button>
+            <button class="border-toggle-btn" data-side="left">Left</button>
+            <button class="border-toggle-btn" data-side="right">Right</button>
+        </div>
+        
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-top: 8px; margin-bottom: 6px;">2. Border Thickness</div>
+        <div style="display: flex; gap: 4px;">
+            <button class="border-toggle-btn active" data-border-size="1">1px</button>
+            <button class="border-toggle-btn" data-border-size="2">2px</button>
+            <button class="border-toggle-btn" data-border-size="3">3px</button>
+        </div>
+    `;
+    
+    let selectedSize = 1;
+    
+    const sizeBtns = insertDropdown.querySelectorAll('button[data-border-size]');
+    sizeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sizeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedSize = parseInt(btn.getAttribute('data-border-size'));
+        });
+    });
+    
+    const sideBtns = insertDropdown.querySelectorAll('button[data-side]');
+    sideBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const side = btn.dataset.side;
+            const borderVal = `${selectedSize}px solid #cbd5e1`;
+            
+            if (side === 'none') {
+                cell.style.border = 'none';
+            } else if (side === 'all') {
+                cell.style.border = borderVal;
+            } else {
+                if (side === 'top') cell.style.borderTop = borderVal;
+                if (side === 'bottom') cell.style.borderBottom = borderVal;
+                if (side === 'left') cell.style.borderLeft = borderVal;
+                if (side === 'right') cell.style.borderRight = borderVal;
+            }
+            triggerAutoSave();
+            insertDropdown.style.display = 'none';
+        });
+    });
+    
+    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+}
+
+function renderPaddingSelector() {
+    const cell = getActiveCell();
+    if (!cell) {
+        insertDropdown.innerHTML = `
+            <div class="dropdown-panel-title">
+                <span>↕️ Cell Padding</span>
+                <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+            </div>
+            <div style="font-size: 11px; color: #ef4444; text-align: center; margin: 20px 0;">Place cursor inside a table cell to edit padding.</div>
+        `;
+        notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+        return;
+    }
+    
+    insertDropdown.innerHTML = `
+        <div class="dropdown-panel-title">
+            <span>↕️ Cell Padding</span>
+            <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
+        </div>
+        <div style="font-weight: 500; font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: center;">Select spacing style</div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button class="padding-option-btn" data-pad="4px">Compact (4px)</button>
+            <button class="padding-option-btn" data-pad="8px">Normal (8px)</button>
+            <button class="padding-option-btn" data-pad="16px">Spacious (16px)</button>
+        </div>
+    `;
+    
+    const padBtns = insertDropdown.getElementsByClassName('padding-option-btn');
+    for (let btn of padBtns) {
+        btn.addEventListener('click', () => {
+            const table = cell.closest('table');
+            if (table) {
+                const paddingVal = btn.dataset.pad;
+                const cells = table.getElementsByTagName('td');
+                for (let i = 0; i < cells.length; i++) {
+                    cells[i].style.padding = paddingVal;
+                }
+                triggerAutoSave();
+            }
+            insertDropdown.style.display = 'none';
+        });
+    }
+    
+    notesRoot.getElementById('menu-back').addEventListener('click', renderInsertMainMenu);
+}
 
 notesRoot.getElementById('image-insert-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
