@@ -2168,6 +2168,22 @@ notesRoot.getElementById('editor-page').addEventListener('keydown', (e) => {
     }
 });
 
+notesRoot.getElementById('editor-page').addEventListener('click', (e) => {
+    let target = e.target;
+    while (target && target !== e.currentTarget) {
+        if (target.nodeName === 'A') {
+            e.preventDefault();
+            e.stopPropagation();
+            const href = target.getAttribute('href');
+            if (href) {
+                window.open(href, '_blank');
+            }
+            break;
+        }
+        target = target.parentNode;
+    }
+});
+
 notesRoot.getElementById('theme-select').addEventListener('change', (e) => {
     const theme = e.target.value;
     const container = notesRoot.getElementById('notes-container');
