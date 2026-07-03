@@ -1767,11 +1767,16 @@ function renderTableTool() {
         </div>
         
         <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 6px;">3. Border Thickness</div>
-        <div style="display: flex; gap: 4px; margin-bottom: 12px;">
+        <div style="display: flex; gap: 4px; margin-bottom: 8px;">
             <button class="border-toggle-btn active" data-border-size="1">1px</button>
             <button class="border-toggle-btn" data-border-size="2">2px</button>
             <button class="border-toggle-btn" data-border-size="3">3px</button>
         </div>
+        
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 12px; cursor: pointer; text-align: left;">
+            <input type="checkbox" id="chk-dark-borders" checked style="cursor: pointer; margin: 0;">
+            Black Borders (uncheck for Gray)
+        </label>
         
         <button class="new-doc-btn" id="table-action-submit" style="width: 100%; font-size: 12px; background: #2563eb; color: white;">
             ${isEditing ? 'Apply Table Styles' : 'Insert Table'}
@@ -1894,7 +1899,9 @@ function renderTableTool() {
         e.stopPropagation();
         restoreSelection();
         
-        const borderVal = `${selectedThickness}px solid #cbd5e1`;
+        const useBlack = notesRoot.getElementById('chk-dark-borders') ? notesRoot.getElementById('chk-dark-borders').checked : true;
+        const borderColor = useBlack ? '#000000' : '#cbd5e1';
+        const borderVal = `${selectedThickness}px solid ${borderColor}`;
         
         if (isEditing) {
             const table = cell.closest('table');
@@ -2053,11 +2060,14 @@ function renderLineSelector() {
 }
 
 function renderLinkSelector() {
+    const selText = notesRoot.getSelection() ? notesRoot.getSelection().toString() : "";
     insertDropdown.innerHTML = `
         <div class="dropdown-panel-title">
             <span>🔗 Insert Link</span>
             <button id="menu-back" style="background: none; border: none; cursor: pointer; color: #2563eb; font-weight: bold;"><- Back</button>
         </div>
+        <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px;">Link Text</div>
+        <input type="text" id="link-menu-text" placeholder="e.g. My Website" value="${selText}" style="width: 100%; font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 8px;">
         <div style="font-size: 11px; font-weight: bold; color: #64748b; margin-bottom: 4px;">Hyperlink Web URL</div>
         <input type="text" id="link-menu-url" value="https://" style="width: 100%; font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 8px;">
         <button class="new-doc-btn" id="link-menu-submit" style="width: 100%; font-size: 11px;">Insert Link</button>
@@ -2065,9 +2075,11 @@ function renderLinkSelector() {
     
     notesRoot.getElementById('link-menu-submit').addEventListener('click', () => {
         const url = notesRoot.getElementById('link-menu-url').value;
+        const text = notesRoot.getElementById('link-menu-text').value || url;
         if (url) {
             restoreSelection();
-            document.execCommand('createLink', false, url);
+            const linkHtml = `<a href="${url}" target="_blank" style="color: #2563eb; text-decoration: underline;">${text}</a>`;
+            document.execCommand('insertHTML', false, linkHtml);
             notesRoot.getElementById('editor-page').focus();
             triggerAutoSave();
         }
