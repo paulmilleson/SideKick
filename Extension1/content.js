@@ -955,9 +955,10 @@ notesRoot.innerHTML = `
         outline: none; box-sizing: border-box; border-radius: 2px; line-height: 1.6; font-size: 14px;
         transition: background-color 0.2s, color 0.2s;
     }
-    .editor-page table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    .editor-page table { border-collapse: collapse; width: 100%; margin: 12px 0; border: none; }
     .editor-page th, .editor-page td { border: 1px solid #cbd5e1; padding: 8px; vertical-align: top; }
     .editor-page img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
+    .editor-page a { cursor: pointer; }
     
     .footer { padding: 4px 12px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; border-top: 1px solid #cbd5e1; font-size: 11px; color: #64748b; }
 
@@ -1906,6 +1907,7 @@ function renderTableTool() {
         if (isEditing) {
             const table = cell.closest('table');
             if (table) {
+                table.style.border = 'none';
                 const cells = table.getElementsByTagName('td');
                 for (let i = 0; i < cells.length; i++) {
                     const td = cells[i];
@@ -1930,7 +1932,7 @@ function renderTableTool() {
                 return;
             }
             
-            let tableHtml = `<table style="border-collapse: collapse; width: 100%; border: ${selectedSides.includes('all') ? borderVal : 'none'}; margin: 12px 0;">`;
+            let tableHtml = `<table style="border-collapse: collapse; width: 100%; border: none; margin: 12px 0;">`;
             for (let r = 0; r < selectedRows; r++) {
                 tableHtml += `<tr>`;
                 for (let c = 0; c < selectedCols; c++) {
