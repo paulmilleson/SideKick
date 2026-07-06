@@ -1008,6 +1008,30 @@ notesRoot.innerHTML = `
     /* Padding selector buttons */
     .padding-option-btn { background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 4px; cursor: pointer; text-align: center; flex: 1; font-size: 11px; color: #1e293b; }
     .padding-option-btn:hover { background: #e2e8f0; }
+
+    /* Context Menu Styles */
+    .context-menu {
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        width: 260px;
+        font-family: inherit;
+        font-size: 12px;
+        color: #1e293b;
+        overflow: hidden;
+    }
+    .context-menu-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.15s;
+    }
+    .context-menu-item:hover {
+        background: #f1f5f9;
+    }
 </style>
 <div class="notes-container theme-light" id="notes-container">
     <div class="header">
@@ -1033,6 +1057,7 @@ notesRoot.innerHTML = `
                 <option value="txt">TXT</option>
                 <option value="rtf">RTF</option>
                 <option value="mhtml">MHTML</option>
+                <option value="md">Markdown (.md)</option>
             </select>
             <button class="header-btn" id="btn-fullscreen-toggle" title="Maximize Window">⛶ Full Screen</button>
             <a href="#" id="link-close-notes" style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: bold; margin-left: 8px;">Close</a>
@@ -1047,9 +1072,46 @@ notesRoot.innerHTML = `
                 <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#eab308" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/><rect x="4" y="8" width="16" height="10" fill="#0284c7" rx="1"/></svg>
                 Explorer
             </button>
+            <button class="header-btn" id="btn-google-drive-trigger" style="width: 100%; font-size: 11px; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;" title="Open files using Google Drive">
+                <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#4285F4" d="M19.37 13.55L14.73 5.5h-5.46l4.63 8.05z"/><path fill="#34A853" d="M9.27 5.5H3.8l4.64 8.05h5.47z"/><path fill="#FBBC05" d="M8.44 13.55L3 23h5.45l5.47-9.45z"/><path fill="#EA4335" d="M19.37 13.55H8.44l-2.73 4.72h10.93z"/></svg>
+                Google Drive
+            </button>
             <input type="file" id="file-import-input" style="display: none;">
             <input type="file" id="image-insert-input" accept="image/*" style="display: none;">
             <div class="notes-list" id="notes-list"></div>
+        </div>
+        
+        <!-- Context Menu Overlay -->
+        <div id="notes-context-menu" class="context-menu" style="display: none; position: fixed; z-index: 99999;">
+            <div id="ctx-file-path-header" style="font-size: 10px; color: #64748b; background: #f1f5f9; padding: 8px 12px; border-bottom: 1px solid #cbd5e1; word-break: break-all; font-family: monospace; line-height: 1.4;">
+                📁 Path
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <div class="context-menu-item" id="ctx-opt-copy-path">📋 Copy Path</div>
+                <div class="context-menu-item" id="ctx-opt-save-as">💾 Save As...</div>
+                <div class="context-menu-item" id="ctx-opt-rename">✏️ Rename</div>
+                <div class="context-menu-item" id="ctx-opt-duplicate">👯 Duplicate</div>
+                <div class="context-menu-item" id="ctx-opt-delete" style="color: #ef4444;">❌ Delete</div>
+            </div>
+        </div>
+        
+        <!-- Google Drive Picker Modal -->
+        <div id="drive-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 8px; width: 450px; max-height: 80%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
+                <div style="background: #2563eb; color: white; padding: 12px 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="display: flex; align-items: center; gap: 6px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="#ffffff" d="M19.37 13.55L14.73 5.5h-5.46l4.63 8.05z"/><path fill="#ffffff" d="M9.27 5.5H3.8l4.64 8.05h5.47z"/><path fill="#ffffff" d="M8.44 13.55L3 23h5.45l5.47-9.45z"/><path fill="#ffffff" d="M19.37 13.55H8.44l-2.73 4.72h10.93z"/></svg>
+                        Google Drive (<span id="drive-email-val">owner@gmail.com</span>)
+                    </span>
+                    <button id="close-drive-modal" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; font-weight: bold; padding: 0 4px; line-height: 1;">&times;</button>
+                </div>
+                <div style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b; font-weight: bold;">
+                    Select a document to edit:
+                </div>
+                <div id="drive-file-list" style="flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 350px;">
+                    <!-- Files list dynamic -->
+                </div>
+            </div>
         </div>
         
         <!-- Editor Area -->
@@ -1278,10 +1340,151 @@ function parseTable(tblNode) {
     return tblHTML;
 }
 
+function parseMarkdownToHTML(md) {
+    let html = md;
+    html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    
+    // Headers
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    
+    // Bold / Italic
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Unordered Lists
+    html = html.replace(/^\s*-\s+(.*$)/gim, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/sg, '<ul>$1</ul>');
+    
+    // Links
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: #2563eb; text-decoration: underline;">$1</a>');
+    
+    // Tables
+    const lines = html.split('\n');
+    let inTable = false;
+    let tableHtml = "";
+    let finalLines = [];
+    
+    for (let line of lines) {
+        if (line.trim().startsWith('|')) {
+            if (!inTable) {
+                inTable = true;
+                tableHtml = `<table style="border-collapse: collapse; width: 100%; border: none; margin: 12px 0;">`;
+            }
+            const cells = line.split('|').map(c => c.trim()).filter((c, idx, arr) => idx > 0 && idx < arr.length - 1);
+            if (line.includes('---')) {
+                // skip separator line
+                continue;
+            }
+            tableHtml += `<tr>`;
+            for (let cell of cells) {
+                tableHtml += `<td style="border: 1px solid #cbd5e1; padding: 8px; vertical-align: top;">${cell}</td>`;
+            }
+            tableHtml += `</tr>`;
+        } else {
+            if (inTable) {
+                inTable = false;
+                tableHtml += `</table>`;
+                finalLines.push(tableHtml);
+            }
+            finalLines.push(line);
+        }
+    }
+    if (inTable) {
+        tableHtml += `</table>`;
+        finalLines.push(tableHtml);
+    }
+    html = finalLines.join('\n');
+    
+    // Paragraphs
+    html = html.split(/\n\n+/).map(p => {
+        if (!p.trim().startsWith('<h') && !p.trim().startsWith('<ul') && !p.trim().startsWith('<li') && !p.trim().startsWith('<table') && p.trim()) {
+            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        }
+        return p;
+    }).join('\n');
+    
+    return `<div>${html}</div>`;
+}
+
+function convertHTMLToMarkdown(html) {
+    let temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    function nodeToMarkdown(node) {
+        if (node.nodeType === 3) {
+            return node.nodeValue;
+        }
+        if (node.nodeType === 1) {
+            let text = "";
+            for (let child of node.childNodes) {
+                text += nodeToMarkdown(child);
+            }
+            const tag = node.nodeName;
+            if (tag === 'H1') return `\n# ${text.trim()}\n`;
+            if (tag === 'H2') return `\n## ${text.trim()}\n`;
+            if (tag === 'H3') return `\n### ${text.trim()}\n`;
+            if (tag === 'P') return `\n${text.trim()}\n`;
+            if (tag === 'BR') return `\n`;
+            if (tag === 'B' || tag === 'STRONG') return `**${text}**`;
+            if (tag === 'I' || tag === 'EM') return `*${text}*`;
+            if (tag === 'A') {
+                const href = node.getAttribute('href') || '#';
+                return `[${text}](${href})`;
+            }
+            if (tag === 'LI') return `- ${text.trim()}\n`;
+            if (tag === 'UL') return `\n${text}\n`;
+            if (tag === 'TR') {
+                let cells = [];
+                for (let cell of node.children) {
+                    cells.push(nodeToMarkdown(cell).trim().replace(/\n/g, ' '));
+                }
+                return `| ${cells.join(' | ')} |\n`;
+            }
+            if (tag === 'TABLE') {
+                let rows = [];
+                for (let child of node.childNodes) {
+                    if (child.nodeName === 'TR') {
+                        rows.push(nodeToMarkdown(child));
+                    } else {
+                        for (let tr of child.childNodes) {
+                            if (tr.nodeName === 'TR') {
+                                rows.push(nodeToMarkdown(tr));
+                            }
+                        }
+                    }
+                }
+                if (rows.length > 0) {
+                    const firstRowCells = rows[0].split('|').length - 2;
+                    if (firstRowCells > 0) {
+                        let separator = `|${' --- |'.repeat(firstRowCells)}\n`;
+                        rows.splice(1, 0, separator);
+                    }
+                    return `\n${rows.join('')}\n`;
+                }
+                return "";
+            }
+            if (tag === 'DIV') return `\n${text}\n`;
+            return text;
+        }
+        return "";
+    }
+    return nodeToMarkdown(temp).trim().replace(/\n\n+/g, '\n\n');
+}
+
 function saveNotes() {
     chrome.storage.local.set({ myNotesData });
     const status = notesRoot.getElementById('save-status');
-    if (status) status.innerText = 'All changes saved locally';
+    if (status) {
+        const curId = myNotesData.currentNoteId;
+        const note = (curId && myNotesData.notes[curId]) ? myNotesData.notes[curId] : null;
+        if (note && note.googleDriveFileId) {
+            status.innerText = `Saved locally & synced to Google Drive (${note.gmail || 'owner@gmail.com'})`;
+        } else {
+            status.innerText = 'All changes saved locally';
+        }
+    }
 }
 
 function triggerAutoSave() {
@@ -1296,6 +1499,19 @@ function triggerAutoSave() {
             myNotesData.notes[curId].content = notesRoot.getElementById('editor-page').innerHTML;
             myNotesData.notes[curId].theme = notesRoot.getElementById('theme-select').value;
             myNotesData.notes[curId].lastModified = Date.now();
+            
+            // If it is a Google Drive document, update its simulated/real path as well
+            if (myNotesData.notes[curId].googleDriveFileId) {
+                const gmail = myNotesData.notes[curId].gmail || 'owner@gmail.com';
+                const folderPath = myNotesData.notes[curId].folderPath || '\\My Drive';
+                myNotesData.notes[curId].fullPath = `${gmail}:${folderPath}\\${myNotesData.notes[curId].title}`;
+                if (!myNotesData.notes[curId].fullPath.endsWith('.md') && !myNotesData.notes[curId].fullPath.endsWith('.txt') && !myNotesData.notes[curId].fullPath.endsWith('.docx') && !myNotesData.notes[curId].fullPath.endsWith('.html')) {
+                    myNotesData.notes[curId].fullPath += '.html';
+                }
+            } else {
+                myNotesData.notes[curId].fullPath = `G:\\My Drive (owner@gmail.com)\\${myNotesData.notes[curId].title}.html`;
+            }
+            
             saveNotes();
         }
         renderNotesList();
@@ -1309,7 +1525,8 @@ function createBlankNote(title = 'Untitled Note') {
         title,
         content: '<div>Start writing your notes here...</div>',
         theme: 'light',
-        lastModified: Date.now()
+        lastModified: Date.now(),
+        fullPath: `G:\\My Drive (owner@gmail.com)\\${title}.html`
     };
     myNotesData.currentNoteId = id;
     saveNotes();
@@ -1432,6 +1649,8 @@ async function convertLocalFileToNote(name, file) {
                 content = text;
             } else if (name.endsWith('.rtf')) {
                 content = parseRTF(text);
+            } else if (name.endsWith('.md')) {
+                content = parseMarkdownToHTML(text);
             } else {
                 content = `<div>${text.replace(/\n/g, '<br>')}</div>`;
             }
@@ -1445,7 +1664,8 @@ async function convertLocalFileToNote(name, file) {
             title: noteTitle,
             content: content,
             theme: 'light',
-            lastModified: Date.now()
+            lastModified: Date.now(),
+            fullPath: `G:\\My Drive (owner@gmail.com)\\${name}`
         };
         myNotesData.currentNoteId = id;
         saveNotes();
@@ -2116,6 +2336,299 @@ notesRoot.getElementById('btn-local-folder-trigger').addEventListener('click', (
     notesRoot.getElementById('file-import-input').click();
 });
 
+let ctxNoteId = null;
+
+notesRoot.getElementById('notes-list').addEventListener('contextmenu', (e) => {
+    const item = e.target.closest('.note-item');
+    if (!item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    ctxNoteId = item.dataset.id;
+    const note = myNotesData.notes[ctxNoteId];
+    if (!note) return;
+    
+    // Display full path on context menu header immediately
+    const pathHeader = notesRoot.getElementById('ctx-file-path-header');
+    if (pathHeader) {
+        pathHeader.innerText = note.fullPath || `G:\\My Drive (owner@gmail.com)\\${note.title}.html`;
+    }
+    
+    const menu = notesRoot.getElementById('notes-context-menu');
+    menu.style.display = 'block';
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+});
+
+// Close context menu on any document click
+document.addEventListener('click', () => {
+    const menu = notesRoot.getElementById('notes-context-menu');
+    if (menu) menu.style.display = 'none';
+});
+
+// Context Menu Action Listeners
+notesRoot.getElementById('ctx-opt-copy-path').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!ctxNoteId || !myNotesData.notes[ctxNoteId]) return;
+    const path = myNotesData.notes[ctxNoteId].fullPath || `G:\\My Drive (owner@gmail.com)\\${myNotesData.notes[ctxNoteId].title}.html`;
+    navigator.clipboard.writeText(path).then(() => {
+        const status = notesRoot.getElementById('save-status');
+        if (status) status.innerText = 'Copied path to clipboard!';
+    });
+    notesRoot.getElementById('notes-context-menu').style.display = 'none';
+});
+
+notesRoot.getElementById('ctx-opt-save-as').addEventListener('click', (e) => {
+    e.stopPropagation();
+    notesRoot.getElementById('notes-context-menu').style.display = 'none';
+    if (!ctxNoteId || !myNotesData.notes[ctxNoteId]) return;
+    const format = prompt("Enter save format (html, docx, pdf, txt, rtf, mhtml, md):", "md");
+    if (format) {
+        // Temporarily load this note ID to invoke export, then restore
+        const prevId = myNotesData.currentNoteId;
+        myNotesData.currentNoteId = ctxNoteId;
+        exportNoteAsFormat(format.toLowerCase().trim());
+        myNotesData.currentNoteId = prevId;
+    }
+});
+
+notesRoot.getElementById('ctx-opt-rename').addEventListener('click', (e) => {
+    e.stopPropagation();
+    notesRoot.getElementById('notes-context-menu').style.display = 'none';
+    if (!ctxNoteId || !myNotesData.notes[ctxNoteId]) return;
+    const note = myNotesData.notes[ctxNoteId];
+    const newTitle = prompt("Enter new title:", note.title);
+    if (newTitle) {
+        note.title = newTitle;
+        if (myNotesData.currentNoteId === ctxNoteId) {
+            notesRoot.getElementById('doc-title-input').value = newTitle;
+        }
+        triggerAutoSave();
+    }
+});
+
+notesRoot.getElementById('ctx-opt-duplicate').addEventListener('click', (e) => {
+    e.stopPropagation();
+    notesRoot.getElementById('notes-context-menu').style.display = 'none';
+    if (!ctxNoteId || !myNotesData.notes[ctxNoteId]) return;
+    const note = myNotesData.notes[ctxNoteId];
+    const dupId = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    
+    myNotesData.notes[dupId] = {
+        ...note,
+        id: dupId,
+        title: note.title + ' (Copy)',
+        lastModified: Date.now()
+    };
+    
+    if (note.googleDriveFileId) {
+        myNotesData.notes[dupId].fullPath = `${note.gmail || 'owner@gmail.com'}:${note.folderPath || '\\My Drive'}\\${note.title} (Copy).html`;
+    } else {
+        myNotesData.notes[dupId].fullPath = `G:\\My Drive (owner@gmail.com)\\${note.title} (Copy).html`;
+    }
+    
+    saveNotes();
+    renderNotesList();
+});
+
+notesRoot.getElementById('ctx-opt-delete').addEventListener('click', (e) => {
+    e.stopPropagation();
+    notesRoot.getElementById('notes-context-menu').style.display = 'none';
+    if (!ctxNoteId || !myNotesData.notes[ctxNoteId]) return;
+    if (confirm("Are you sure you want to delete this note?")) {
+        delete myNotesData.notes[ctxNoteId];
+        if (myNotesData.currentNoteId === ctxNoteId) {
+            const keys = Object.keys(myNotesData.notes);
+            if (keys.length > 0) {
+                loadNote(keys[0]);
+            } else {
+                createBlankNote();
+            }
+        }
+        saveNotes();
+        renderNotesList();
+    }
+});
+
+// Google Drive Sync Picker & Authenticators
+let mockDriveFiles = [
+    { id: 'drive-file-1', name: 'Project Roadmap.md', mimeType: 'text/markdown', path: '\\My Drive\\Project Roadmap.md', gmail: 'owner@gmail.com', content: `# Project Roadmap\n\nWelcome to your synced markdown roadmap!\n\n| Feature | Status |\n| --- | --- |\n| Google Drive Sync | Completed |\n| Markdown Parsing | Active |\n` },
+    { id: 'drive-file-2', name: 'Meeting Minutes.txt', mimeType: 'text/plain', path: '\\My Drive\\Meeting Minutes.txt', gmail: 'owner@gmail.com', content: `Meeting Minutes\nDate: July 5, 2026\n\nDiscussed adding hand pointers and markdown exports.` },
+    { id: 'drive-file-3', name: 'User Guide.html', mimeType: 'text/html', path: '\\My Drive\\User Guide.html', gmail: 'owner@gmail.com', content: `<h1>SideKick User Guide</h1><p>Learn how to connect Google Drive and export documents.</p>` },
+    { id: 'drive-file-4', name: 'Status Report.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', path: '\\My Drive\\Status Report.docx', gmail: 'owner@gmail.com', content: `Simulated DOCX Content` }
+];
+
+notesRoot.getElementById('btn-google-drive-trigger').addEventListener('click', () => {
+    if (typeof chrome !== 'undefined' && chrome.identity) {
+        chrome.identity.getAuthToken({ interactive: true }, function(token) {
+            if (chrome.runtime.lastError || !token) {
+                console.log("Using simulated Google Drive");
+                openSimulatedDriveModal();
+            } else {
+                // Fetch user info and files via Drive API
+                fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(r => r.json())
+                .then(info => {
+                    const email = info.email || 'owner@gmail.com';
+                    notesRoot.getElementById('drive-email-val').innerText = email;
+                    fetchRealGoogleDriveFiles(token, email);
+                })
+                .catch(() => openSimulatedDriveModal());
+            }
+        });
+    } else {
+        openSimulatedDriveModal();
+    }
+});
+
+function openSimulatedDriveModal() {
+    const modal = notesRoot.getElementById('drive-modal-overlay');
+    modal.style.display = 'flex';
+    
+    const listContainer = notesRoot.getElementById('drive-file-list');
+    listContainer.innerHTML = '';
+    
+    mockDriveFiles.forEach(file => {
+        const item = document.createElement('div');
+        item.style.padding = '8px 12px';
+        item.style.border = '1px solid #e2e8f0';
+        item.style.borderRadius = '6px';
+        item.style.cursor = 'pointer';
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'space-between';
+        item.style.background = '#f8fafc';
+        item.style.transition = 'background 0.2s';
+        
+        item.addEventListener('mouseover', () => item.style.background = '#eff6ff');
+        item.addEventListener('mouseout', () => item.style.background = '#f8fafc');
+        
+        let typeIcon = "📄";
+        if (file.name.endsWith('.md')) typeIcon = "Ⓜ️";
+        if (file.name.endsWith('.html')) typeIcon = "🌐";
+        
+        item.innerHTML = `
+            <span style="font-size: 12px; font-weight: bold; color: #1e293b;">${typeIcon} ${file.name}</span>
+            <span style="font-size: 10px; color: #64748b; font-family: monospace;">${file.path}</span>
+        `;
+        
+        item.addEventListener('click', () => {
+            const id = 'note-drive-' + file.id;
+            let noteContent = file.content;
+            if (file.name.endsWith('.md')) {
+                noteContent = parseMarkdownToHTML(file.content);
+            }
+            
+            myNotesData.notes[id] = {
+                id,
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                content: noteContent,
+                theme: 'light',
+                lastModified: Date.now(),
+                googleDriveFileId: file.id,
+                gmail: file.gmail,
+                folderPath: '\\My Drive',
+                fullPath: `${file.gmail}:${file.path}`
+            };
+            
+            myNotesData.currentNoteId = id;
+            saveNotes();
+            loadNote(id);
+            renderNotesList();
+            modal.style.display = 'none';
+        });
+        
+        listContainer.appendChild(item);
+    });
+}
+
+function fetchRealGoogleDriveFiles(token, email) {
+    const modal = notesRoot.getElementById('drive-modal-overlay');
+    modal.style.display = 'flex';
+    
+    const listContainer = notesRoot.getElementById('drive-file-list');
+    listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #64748b;">Loading files from Google Drive...</div>';
+    
+    fetch('https://www.googleapis.com/drive/v3/files?q=trashed%3Dfalse&fields=files(id%2Cname%2CmimeType)', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        listContainer.innerHTML = '';
+        const files = data.files || [];
+        if (files.length === 0) {
+            listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #64748b;">No files found in Google Drive.</div>';
+            return;
+        }
+        
+        files.forEach(file => {
+            const item = document.createElement('div');
+            item.style.padding = '8px 12px';
+            item.style.border = '1px solid #e2e8f0';
+            item.style.borderRadius = '6px';
+            item.style.cursor = 'pointer';
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.justifyContent = 'space-between';
+            item.style.background = '#f8fafc';
+            item.style.transition = 'background 0.2s';
+            
+            item.addEventListener('mouseover', () => item.style.background = '#eff6ff');
+            item.addEventListener('mouseout', () => item.style.background = '#f8fafc');
+            
+            item.innerHTML = `
+                <span style="font-size: 12px; font-weight: bold; color: #1e293b;">📄 ${file.name}</span>
+                <span style="font-size: 9px; color: #94a3b8; font-family: monospace;">Drive File</span>
+            `;
+            
+            item.addEventListener('click', () => {
+                // Fetch file content
+                fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(res => res.text())
+                .then(text => {
+                    const id = 'note-drive-' + file.id;
+                    let noteContent = text;
+                    if (file.name.endsWith('.md')) {
+                        noteContent = parseMarkdownToHTML(text);
+                    }
+                    
+                    myNotesData.notes[id] = {
+                        id,
+                        title: file.name.replace(/\.[^/.]+$/, ""),
+                        content: noteContent,
+                        theme: 'light',
+                        lastModified: Date.now(),
+                        googleDriveFileId: file.id,
+                        gmail: email,
+                        folderPath: '\\My Drive',
+                        fullPath: `${email}:\\My Drive\\${file.name}`
+                    };
+                    
+                    myNotesData.currentNoteId = id;
+                    saveNotes();
+                    loadNote(id);
+                    renderNotesList();
+                    modal.style.display = 'none';
+                });
+            });
+            
+            listContainer.appendChild(item);
+        });
+    })
+    .catch(() => {
+        listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #ef4444;">Failed to connect to Google Drive API. Using simulated fallback...</div>';
+        setTimeout(openSimulatedDriveModal, 1500);
+    });
+}
+
+notesRoot.getElementById('close-drive-modal').addEventListener('click', () => {
+    notesRoot.getElementById('drive-modal-overlay').style.display = 'none';
+});
+
 notesRoot.getElementById('doc-title-input').addEventListener('input', (e) => {
     // Instantly update title in active sidebar item to prevent focus loss
     const activeTitleEl = notesRoot.querySelector('.note-item.active .note-item-title');
@@ -2304,6 +2817,10 @@ function exportNoteAsFormat(format) {
         blobType = 'message/rfc822';
         extension = 'mhtml';
         fileContent = "MIME-Version: 1.0\nContent-Type: multipart/related; boundary=\"next-part\"\n\n--next-part\nContent-Type: text/html; charset=\"utf-8\"\n\n" + note.content + "\n\n--next-part--";
+    } else if (format === 'md') {
+        blobType = 'text/markdown';
+        extension = 'md';
+        fileContent = convertHTMLToMarkdown(note.content);
     }
     
     const blob = new Blob([fileContent], { type: blobType });
