@@ -1123,10 +1123,14 @@ notesRoot.innerHTML = `
         
         <!-- Google Sign-In Form Modal -->
         <div id="signin-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; align-items: center; justify-content: center;">
-            <div style="background: white; border-radius: 8px; width: 350px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 12px; font-family: inherit;">
+            <div style="background: white; border-radius: 8px; width: 360px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 12px; font-family: inherit;">
                 <div style="font-weight: bold; font-size: 14px; text-align: center; color: #1e293b;">Sign In with Google</div>
                 <div style="font-size: 11px; color: #64748b; text-align: center; line-height: 1.4;">Enter your Google Account email to authenticate and sync your notes.</div>
                 <input type="email" id="signin-email-input" placeholder="example@gmail.com" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                
+                <div style="font-size: 11px; color: #64748b; font-weight: bold; margin-top: 4px; text-align: left;">OAuth Access Token (Optional for manual override):</div>
+                <input type="password" id="signin-token-input" placeholder="ya29.a0Acv..." style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                
                 <button class="new-doc-btn" id="btn-signin-submit" style="width: 100%; background: #2563eb; color: white; padding: 8px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; font-size: 12px;">Authenticate & Sign In</button>
                 <button id="btn-signin-cancel" style="background: none; border: none; color: #64748b; font-size: 11px; cursor: pointer; text-decoration: underline; align-self: center;">Cancel</button>
             </div>
@@ -1492,6 +1496,7 @@ function convertHTMLToMarkdown(html) {
 }
 
 let currentGoogleEmail = null;
+let currentGoogleToken = null;
 
 function renderGoogleAccountStatus(email) {
     const statusEl = notesRoot.getElementById('google-account-status');
@@ -1518,13 +1523,14 @@ function renderGoogleAccountStatus(email) {
     }
 }
 
-function setGoogleAccount(email) {
+function setGoogleAccount(email, token = null) {
     const oldEmail = currentGoogleEmail;
     currentGoogleEmail = email;
+    currentGoogleToken = token;
     renderGoogleAccountStatus(email);
     
     if (email) {
-        chrome.storage.local.set({ signedInEmail: email });
+        chrome.storage.local.set({ signedInEmail: email, manualOAuthToken: token });
         // Update all existing note paths that used the old email (or default)
         const targetOld = oldEmail || 'owner@gmail.com';
         for (let noteId in myNotesData.notes) {
@@ -1541,26 +1547,31 @@ function setGoogleAccount(email) {
         saveNotes();
         renderNotesList();
     } else {
-        chrome.storage.local.remove(['signedInEmail']);
+        chrome.storage.local.remove(['signedInEmail', 'manualOAuthToken']);
     }
 }
 
 function initGoogleAccount() {
-    if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getProfileUserInfo) {
-        chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, function(userInfo) {
-            if (userInfo && userInfo.email) {
-                setGoogleAccount(userInfo.email);
-            } else {
-                chrome.storage.local.get(['signedInEmail'], function(res) {
-                    setGoogleAccount(res.signedInEmail || null);
-                });
-            }
-        });
-    } else {
-        chrome.storage.local.get(['signedInEmail'], function(res) {
-            setGoogleAccount(res.signedInEmail || null);
-        });
-    }
+    chrome.storage.local.get(['signedInEmail', 'manualOAuthToken'], function(res) {
+        if (res.manualOAuthToken) {
+            currentGoogleToken = res.manualOAuthToken;
+            notesRoot.getElementById('signin-token-input').value = res.manualOAuthToken;
+        }
+        if (res.signedInEmail) {
+            notesRoot.getElementById('signin-email-input').value = res.signedInEmail;
+            setGoogleAccount(res.signedInEmail, res.manualOAuthToken || null);
+        } else if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getProfileUserInfo) {
+            chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, function(userInfo) {
+                if (userInfo && userInfo.email) {
+                    setGoogleAccount(userInfo.email, res.manualOAuthToken || null);
+                } else {
+                    renderGoogleAccountStatus(null);
+                }
+            });
+        } else {
+            renderGoogleAccountStatus(null);
+        }
+    });
 }
 
 function saveNotes() {
@@ -1598,6 +1609,33 @@ function triggerAutoSave() {
                 myNotesData.notes[curId].fullPath = `${gmail}:${folderPath}\\${myNotesData.notes[curId].title}`;
                 if (!myNotesData.notes[curId].fullPath.endsWith('.md') && !myNotesData.notes[curId].fullPath.endsWith('.txt') && !myNotesData.notes[curId].fullPath.endsWith('.docx') && !myNotesData.notes[curId].fullPath.endsWith('.html')) {
                     myNotesData.notes[curId].fullPath += '.html';
+                }
+                
+                if (currentGoogleToken) {
+                    const fileId = myNotesData.notes[curId].googleDriveFileId;
+                    const fileTitle = myNotesData.notes[curId].title;
+                    const isMd = fileTitle.endsWith('.md') || myNotesData.notes[curId].fullPath.endsWith('.md');
+                    let contentToUpload = myNotesData.notes[curId].content;
+                    if (isMd) {
+                        contentToUpload = convertHTMLToMarkdown(contentToUpload);
+                    }
+                    
+                    fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': 'Bearer ' + currentGoogleToken,
+                            'Content-Type': isMd ? 'text/markdown' : 'text/html'
+                        },
+                        body: contentToUpload
+                    })
+                    .then(r => {
+                        if (r.status === 401) {
+                            handleAuthFailure();
+                        } else if (r.ok) {
+                            console.log("Successfully synced note to Google Drive");
+                        }
+                    })
+                    .catch(err => console.error("Drive sync failed:", err));
                 }
             } else {
                 myNotesData.notes[curId].fullPath = `G:\\My Drive (${activeEmail})\\${myNotesData.notes[curId].title}.html`;
@@ -2556,6 +2594,12 @@ notesRoot.getElementById('btn-google-drive-trigger').addEventListener('click', (
         return;
     }
     
+    if (currentGoogleToken) {
+        notesRoot.getElementById('drive-email-val').innerText = currentGoogleEmail;
+        fetchRealGoogleDriveFiles(currentGoogleToken, currentGoogleEmail);
+        return;
+    }
+    
     if (typeof chrome !== 'undefined' && chrome.identity) {
         chrome.identity.getAuthToken({ interactive: true }, function(token) {
             if (chrome.runtime.lastError || !token) {
@@ -2572,11 +2616,12 @@ notesRoot.getElementById('btn-google-drive-trigger').addEventListener('click', (
 
 notesRoot.getElementById('btn-signin-submit').addEventListener('click', () => {
     const emailInput = notesRoot.getElementById('signin-email-input').value.trim();
+    const tokenInput = notesRoot.getElementById('signin-token-input').value.trim() || null;
     if (!emailInput || !emailInput.includes('@')) {
         alert("Please enter a valid Google email address.");
         return;
     }
-    setGoogleAccount(emailInput);
+    setGoogleAccount(emailInput, tokenInput);
     notesRoot.getElementById('signin-modal-overlay').style.display = 'none';
     notesRoot.getElementById('btn-google-drive-trigger').click();
 });
@@ -2666,8 +2711,16 @@ function fetchRealGoogleDriveFiles(token, email) {
     fetch('https://www.googleapis.com/drive/v3/files?q=trashed%3Dfalse&fields=files(id%2Cname%2CmimeType)', {
         headers: { 'Authorization': 'Bearer ' + token }
     })
-    .then(r => r.json())
+    .then(r => {
+        if (r.status === 401) {
+            throw new Error("UNAUTHORIZED");
+        }
+        return r.json();
+    })
     .then(data => {
+        if (data.error) {
+            throw new Error(data.error.message || "Drive API Error");
+        }
         listContainer.innerHTML = '';
         const files = data.files || [];
         if (files.length === 0) {
@@ -2690,17 +2743,23 @@ function fetchRealGoogleDriveFiles(token, email) {
             item.addEventListener('mouseover', () => item.style.background = '#eff6ff');
             item.addEventListener('mouseout', () => item.style.background = '#f8fafc');
             
+            let typeIcon = "📄";
+            if (file.name.endsWith('.md')) typeIcon = "Ⓜ️";
+            if (file.name.endsWith('.html')) typeIcon = "🌐";
+            
             item.innerHTML = `
-                <span style="font-size: 12px; font-weight: bold; color: #1e293b;">📄 ${file.name}</span>
-                <span style="font-size: 9px; color: #94a3b8; font-family: monospace;">Drive File</span>
+                <span style="font-size: 12px; font-weight: bold; color: #1e293b;">${typeIcon} ${file.name}</span>
+                <span style="font-size: 9px; color: #94a3b8; font-family: monospace;">${email}:${file.name}</span>
             `;
             
             item.addEventListener('click', () => {
-                // Fetch file content
                 fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 })
-                .then(res => res.text())
+                .then(res => {
+                    if (res.status === 401) throw new Error("UNAUTHORIZED");
+                    return res.text();
+                })
                 .then(text => {
                     const id = 'note-drive-' + file.id;
                     let noteContent = text;
@@ -2725,16 +2784,33 @@ function fetchRealGoogleDriveFiles(token, email) {
                     loadNote(id);
                     renderNotesList();
                     modal.style.display = 'none';
+                })
+                .catch(err => {
+                    if (err.message === "UNAUTHORIZED") {
+                        handleAuthFailure();
+                    } else {
+                        alert("Error loading file content: " + err.message);
+                    }
                 });
             });
             
             listContainer.appendChild(item);
         });
     })
-    .catch(() => {
-        listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #ef4444;">Failed to connect to Google Drive API. Using simulated fallback...</div>';
-        setTimeout(openSimulatedDriveModal, 1500);
+    .catch(err => {
+        if (err.message === "UNAUTHORIZED") {
+            handleAuthFailure();
+        } else {
+            listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #ef4444;">Failed to connect to Google Drive API. Using simulated fallback...</div>';
+            setTimeout(openSimulatedDriveModal, 1500);
+        }
     });
+}
+
+function handleAuthFailure() {
+    alert("Google authentication token has expired or is invalid. Please sign in again or update your Access Token.");
+    notesRoot.getElementById('drive-modal-overlay').style.display = 'none';
+    notesRoot.getElementById('signin-modal-overlay').style.display = 'flex';
 }
 
 notesRoot.getElementById('close-drive-modal').addEventListener('click', () => {
