@@ -2596,6 +2596,9 @@ function openSimulatedDriveModal() {
     const modal = notesRoot.getElementById('drive-modal-overlay');
     modal.style.display = 'flex';
     
+    const activeEmail = currentGoogleEmail || 'owner@gmail.com';
+    notesRoot.getElementById('drive-email-val').innerText = activeEmail;
+    
     const listContainer = notesRoot.getElementById('drive-file-list');
     listContainer.innerHTML = '';
     
@@ -2620,7 +2623,7 @@ function openSimulatedDriveModal() {
         
         item.innerHTML = `
             <span style="font-size: 12px; font-weight: bold; color: #1e293b;">${typeIcon} ${file.name}</span>
-            <span style="font-size: 10px; color: #64748b; font-family: monospace;">${file.path}</span>
+            <span style="font-size: 10px; color: #64748b; font-family: monospace;">${activeEmail}:${file.path}</span>
         `;
         
         item.addEventListener('click', () => {
@@ -2637,9 +2640,9 @@ function openSimulatedDriveModal() {
                 theme: 'light',
                 lastModified: Date.now(),
                 googleDriveFileId: file.id,
-                gmail: file.gmail,
+                gmail: activeEmail,
                 folderPath: '\\My Drive',
-                fullPath: `${file.gmail}:${file.path}`
+                fullPath: `${activeEmail}:${file.path}`
             };
             
             myNotesData.currentNoteId = id;

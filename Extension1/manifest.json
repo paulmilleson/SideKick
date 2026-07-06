@@ -9,7 +9,8 @@
     "activeTab",
     "scripting",
     "storage",
-    "identity"
+    "identity",
+    "identity.email"
   ],
   "content_scripts": [
     {
