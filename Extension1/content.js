@@ -1072,6 +1072,12 @@ notesRoot.innerHTML = `
                 <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#eab308" d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/><rect x="4" y="8" width="16" height="10" fill="#0284c7" rx="1"/></svg>
                 Explorer
             </button>
+            
+            <div id="google-account-status" style="font-size: 10px; color: #64748b; text-align: center; margin-top: 6px; display: flex; flex-direction: column; gap: 2px;">
+                <span>Not signed in</span>
+                <a href="#" id="btn-google-signin-trigger" style="color: #2563eb; text-decoration: underline; cursor: pointer;">Sign In</a>
+            </div>
+            
             <button class="header-btn" id="btn-google-drive-trigger" style="width: 100%; font-size: 11px; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 4px;" title="Open files using Google Drive">
                 <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align: middle;"><path fill="#4285F4" d="M19.37 13.55L14.73 5.5h-5.46l4.63 8.05z"/><path fill="#34A853" d="M9.27 5.5H3.8l4.64 8.05h5.47z"/><path fill="#FBBC05" d="M8.44 13.55L3 23h5.45l5.47-9.45z"/><path fill="#EA4335" d="M19.37 13.55H8.44l-2.73 4.72h10.93z"/></svg>
                 Google Drive
@@ -1097,11 +1103,12 @@ notesRoot.innerHTML = `
         
         <!-- Google Drive Picker Modal -->
         <div id="drive-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; align-items: center; justify-content: center;">
-            <div style="background: white; border-radius: 8px; width: 450px; max-height: 80%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
-                <div style="background: #2563eb; color: white; padding: 12px 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="display: flex; align-items: center; gap: 6px;">
+            <div style="background: white; border-radius: 8px; width: 480px; max-height: 80%; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden;">
+                <div style="background: #2563eb; color: white; padding: 12px 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                    <span style="display: flex; align-items: center; gap: 4px;">
                         <svg viewBox="0 0 24 24" width="16" height="16" style="vertical-align: middle;"><path fill="#ffffff" d="M19.37 13.55L14.73 5.5h-5.46l4.63 8.05z"/><path fill="#ffffff" d="M9.27 5.5H3.8l4.64 8.05h5.47z"/><path fill="#ffffff" d="M8.44 13.55L3 23h5.45l5.47-9.45z"/><path fill="#ffffff" d="M19.37 13.55H8.44l-2.73 4.72h10.93z"/></svg>
                         Google Drive (<span id="drive-email-val">owner@gmail.com</span>)
+                        <a href="#" id="btn-change-drive-email" style="color: #93c5fd; font-size: 11px; text-decoration: underline; margin-left: 6px; cursor: pointer;">[Change]</a>
                     </span>
                     <button id="close-drive-modal" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; font-weight: bold; padding: 0 4px; line-height: 1;">&times;</button>
                 </div>
@@ -1111,6 +1118,17 @@ notesRoot.innerHTML = `
                 <div id="drive-file-list" style="flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 350px;">
                     <!-- Files list dynamic -->
                 </div>
+            </div>
+        </div>
+        
+        <!-- Google Sign-In Form Modal -->
+        <div id="signin-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 8px; width: 350px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 12px; font-family: inherit;">
+                <div style="font-weight: bold; font-size: 14px; text-align: center; color: #1e293b;">Sign In with Google</div>
+                <div style="font-size: 11px; color: #64748b; text-align: center; line-height: 1.4;">Enter your Google Account email to authenticate and sync your notes.</div>
+                <input type="email" id="signin-email-input" placeholder="example@gmail.com" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; box-sizing: border-box;">
+                <button class="new-doc-btn" id="btn-signin-submit" style="width: 100%; background: #2563eb; color: white; padding: 8px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; font-size: 12px;">Authenticate & Sign In</button>
+                <button id="btn-signin-cancel" style="background: none; border: none; color: #64748b; font-size: 11px; cursor: pointer; text-decoration: underline; align-self: center;">Cancel</button>
             </div>
         </div>
         
@@ -1473,6 +1491,78 @@ function convertHTMLToMarkdown(html) {
     return nodeToMarkdown(temp).trim().replace(/\n\n+/g, '\n\n');
 }
 
+let currentGoogleEmail = null;
+
+function renderGoogleAccountStatus(email) {
+    const statusEl = notesRoot.getElementById('google-account-status');
+    if (!statusEl) return;
+    
+    if (email) {
+        statusEl.innerHTML = `
+            <span>Account: <strong>${email}</strong></span>
+            <a href="#" id="btn-google-signout" style="color: #ef4444; text-decoration: underline; cursor: pointer; font-size: 10px;">Switch Account</a>
+        `;
+        notesRoot.getElementById('btn-google-signout').addEventListener('click', (e) => {
+            e.preventDefault();
+            notesRoot.getElementById('signin-modal-overlay').style.display = 'flex';
+        });
+    } else {
+        statusEl.innerHTML = `
+            <span>Not signed in</span>
+            <a href="#" id="btn-google-signin-trigger" style="color: #2563eb; text-decoration: underline; cursor: pointer; font-size: 10px;">Sign In</a>
+        `;
+        notesRoot.getElementById('btn-google-signin-trigger').addEventListener('click', (e) => {
+            e.preventDefault();
+            notesRoot.getElementById('signin-modal-overlay').style.display = 'flex';
+        });
+    }
+}
+
+function setGoogleAccount(email) {
+    const oldEmail = currentGoogleEmail;
+    currentGoogleEmail = email;
+    renderGoogleAccountStatus(email);
+    
+    if (email) {
+        chrome.storage.local.set({ signedInEmail: email });
+        // Update all existing note paths that used the old email (or default)
+        const targetOld = oldEmail || 'owner@gmail.com';
+        for (let noteId in myNotesData.notes) {
+            const note = myNotesData.notes[noteId];
+            if (note.googleDriveFileId) {
+                if (note.gmail === targetOld) {
+                    note.gmail = email;
+                }
+                note.fullPath = note.fullPath.replace(targetOld, email);
+            } else {
+                note.fullPath = `G:\\My Drive (${email})\\${note.title}.html`;
+            }
+        }
+        saveNotes();
+        renderNotesList();
+    } else {
+        chrome.storage.local.remove(['signedInEmail']);
+    }
+}
+
+function initGoogleAccount() {
+    if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getProfileUserInfo) {
+        chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, function(userInfo) {
+            if (userInfo && userInfo.email) {
+                setGoogleAccount(userInfo.email);
+            } else {
+                chrome.storage.local.get(['signedInEmail'], function(res) {
+                    setGoogleAccount(res.signedInEmail || null);
+                });
+            }
+        });
+    } else {
+        chrome.storage.local.get(['signedInEmail'], function(res) {
+            setGoogleAccount(res.signedInEmail || null);
+        });
+    }
+}
+
 function saveNotes() {
     chrome.storage.local.set({ myNotesData });
     const status = notesRoot.getElementById('save-status');
@@ -1480,7 +1570,7 @@ function saveNotes() {
         const curId = myNotesData.currentNoteId;
         const note = (curId && myNotesData.notes[curId]) ? myNotesData.notes[curId] : null;
         if (note && note.googleDriveFileId) {
-            status.innerText = `Saved locally & synced to Google Drive (${note.gmail || 'owner@gmail.com'})`;
+            status.innerText = `Saved locally & synced to Google Drive (${note.gmail || currentGoogleEmail || 'owner@gmail.com'})`;
         } else {
             status.innerText = 'All changes saved locally';
         }
@@ -1501,15 +1591,16 @@ function triggerAutoSave() {
             myNotesData.notes[curId].lastModified = Date.now();
             
             // If it is a Google Drive document, update its simulated/real path as well
+            const activeEmail = currentGoogleEmail || 'owner@gmail.com';
             if (myNotesData.notes[curId].googleDriveFileId) {
-                const gmail = myNotesData.notes[curId].gmail || 'owner@gmail.com';
+                const gmail = myNotesData.notes[curId].gmail || activeEmail;
                 const folderPath = myNotesData.notes[curId].folderPath || '\\My Drive';
                 myNotesData.notes[curId].fullPath = `${gmail}:${folderPath}\\${myNotesData.notes[curId].title}`;
                 if (!myNotesData.notes[curId].fullPath.endsWith('.md') && !myNotesData.notes[curId].fullPath.endsWith('.txt') && !myNotesData.notes[curId].fullPath.endsWith('.docx') && !myNotesData.notes[curId].fullPath.endsWith('.html')) {
                     myNotesData.notes[curId].fullPath += '.html';
                 }
             } else {
-                myNotesData.notes[curId].fullPath = `G:\\My Drive (owner@gmail.com)\\${myNotesData.notes[curId].title}.html`;
+                myNotesData.notes[curId].fullPath = `G:\\My Drive (${activeEmail})\\${myNotesData.notes[curId].title}.html`;
             }
             
             saveNotes();
@@ -1520,13 +1611,14 @@ function triggerAutoSave() {
 
 function createBlankNote(title = 'Untitled Note') {
     const id = 'note-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    const activeEmail = currentGoogleEmail || 'owner@gmail.com';
     myNotesData.notes[id] = {
         id,
         title,
         content: '<div>Start writing your notes here...</div>',
         theme: 'light',
         lastModified: Date.now(),
-        fullPath: `G:\\My Drive (owner@gmail.com)\\${title}.html`
+        fullPath: `G:\\My Drive (${activeEmail})\\${title}.html`
     };
     myNotesData.currentNoteId = id;
     saveNotes();
@@ -2459,28 +2551,45 @@ let mockDriveFiles = [
 ];
 
 notesRoot.getElementById('btn-google-drive-trigger').addEventListener('click', () => {
+    if (!currentGoogleEmail) {
+        notesRoot.getElementById('signin-modal-overlay').style.display = 'flex';
+        return;
+    }
+    
     if (typeof chrome !== 'undefined' && chrome.identity) {
         chrome.identity.getAuthToken({ interactive: true }, function(token) {
             if (chrome.runtime.lastError || !token) {
-                console.log("Using simulated Google Drive");
                 openSimulatedDriveModal();
             } else {
-                // Fetch user info and files via Drive API
-                fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                })
-                .then(r => r.json())
-                .then(info => {
-                    const email = info.email || 'owner@gmail.com';
-                    notesRoot.getElementById('drive-email-val').innerText = email;
-                    fetchRealGoogleDriveFiles(token, email);
-                })
-                .catch(() => openSimulatedDriveModal());
+                notesRoot.getElementById('drive-email-val').innerText = currentGoogleEmail;
+                fetchRealGoogleDriveFiles(token, currentGoogleEmail);
             }
         });
     } else {
         openSimulatedDriveModal();
     }
+});
+
+notesRoot.getElementById('btn-signin-submit').addEventListener('click', () => {
+    const emailInput = notesRoot.getElementById('signin-email-input').value.trim();
+    if (!emailInput || !emailInput.includes('@')) {
+        alert("Please enter a valid Google email address.");
+        return;
+    }
+    setGoogleAccount(emailInput);
+    notesRoot.getElementById('signin-modal-overlay').style.display = 'none';
+    notesRoot.getElementById('btn-google-drive-trigger').click();
+});
+
+notesRoot.getElementById('btn-signin-cancel').addEventListener('click', () => {
+    notesRoot.getElementById('signin-modal-overlay').style.display = 'none';
+});
+
+notesRoot.getElementById('btn-change-drive-email').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    notesRoot.getElementById('drive-modal-overlay').style.display = 'none';
+    notesRoot.getElementById('signin-modal-overlay').style.display = 'flex';
 });
 
 function openSimulatedDriveModal() {
@@ -2955,6 +3064,7 @@ notesRoot.getElementById('link-close-notes').addEventListener('click', (e) => {
 
 // Load storage notes
 chrome.storage.local.get(['myNotesData'], (result) => {
+    initGoogleAccount();
     if (result.myNotesData && result.myNotesData.notes && Object.keys(result.myNotesData.notes).length > 0) {
         myNotesData = result.myNotesData;
         loadNote(myNotesData.currentNoteId || Object.keys(myNotesData.notes)[0]);
