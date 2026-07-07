@@ -64,6 +64,7 @@ Content-Type: text/html; charset="utf-8"
             margin: 0;
             background: linear-gradient(to right, #3b82f6, #a78bfa);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
