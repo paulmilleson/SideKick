@@ -25,7 +25,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "soccer_kicking_icon.png"
+        "soccer_kicking_icon.png",
+        "gcloud-token.json"
       ],
       "matches": [
         "<all_urls>"

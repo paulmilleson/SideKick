@@ -1552,6 +1552,33 @@ function setGoogleAccount(email, token = null) {
 }
 
 function initGoogleAccount() {
+    fetch(chrome.runtime.getURL('gcloud-token.json'))
+    .then(r => r.json())
+    .then(data => {
+        if (data.token) {
+            if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getProfileUserInfo) {
+                chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, function(userInfo) {
+                    const activeEmail = (userInfo && userInfo.email) ? userInfo.email : (data.email || 'owner@gmail.com');
+                    notesRoot.getElementById('signin-email-input').value = activeEmail;
+                    notesRoot.getElementById('signin-token-input').value = data.token;
+                    setGoogleAccount(activeEmail, data.token);
+                });
+            } else {
+                const activeEmail = data.email || 'owner@gmail.com';
+                notesRoot.getElementById('signin-email-input').value = activeEmail;
+                notesRoot.getElementById('signin-token-input').value = data.token;
+                setGoogleAccount(activeEmail, data.token);
+            }
+        } else {
+            loadStandardGoogleAccount();
+        }
+    })
+    .catch(() => {
+        loadStandardGoogleAccount();
+    });
+}
+
+function loadStandardGoogleAccount() {
     chrome.storage.local.get(['signedInEmail', 'manualOAuthToken'], function(res) {
         if (res.manualOAuthToken) {
             currentGoogleToken = res.manualOAuthToken;
