@@ -1647,7 +1647,7 @@ function triggerAutoSave() {
                         contentToUpload = convertHTMLToMarkdown(contentToUpload);
                     }
                     
-                    fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                    fetchViaBackground(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
                         method: 'PATCH',
                         headers: {
                             'Authorization': 'Bearer ' + currentGoogleToken,
@@ -2728,6 +2728,41 @@ function openSimulatedDriveModal() {
     });
 }
 
+function fetchViaBackground(url, options = {}) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FETCH_DRIVE_API',
+            url,
+            method: options.method || 'GET',
+            headers: options.headers || {},
+            body: options.body || null
+        }, (response) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+            }
+            if (!response) {
+                reject(new Error("No response from background page"));
+                return;
+            }
+            if (response.success) {
+                resolve({
+                    status: response.status,
+                    ok: true,
+                    text: () => Promise.resolve(response.text),
+                    json: () => Promise.resolve(JSON.parse(response.text))
+                });
+            } else {
+                if (response.status === 401) {
+                    reject(new Error("UNAUTHORIZED"));
+                } else {
+                    reject(new Error(response.error || `HTTP ${response.status}`));
+                }
+            }
+        });
+    });
+}
+
 function fetchRealGoogleDriveFiles(token, email) {
     const modal = notesRoot.getElementById('drive-modal-overlay');
     modal.style.display = 'flex';
@@ -2735,7 +2770,7 @@ function fetchRealGoogleDriveFiles(token, email) {
     const listContainer = notesRoot.getElementById('drive-file-list');
     listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #64748b;">Loading files from Google Drive...</div>';
     
-    fetch('https://www.googleapis.com/drive/v3/files?q=trashed%3Dfalse&fields=files(id%2Cname%2CmimeType)', {
+    fetchViaBackground('https://www.googleapis.com/drive/v3/files?q=trashed%3Dfalse&fields=files(id%2Cname%2CmimeType)', {
         headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(r => {
@@ -2780,7 +2815,7 @@ function fetchRealGoogleDriveFiles(token, email) {
             `;
             
             item.addEventListener('click', () => {
-                fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+                fetchViaBackground(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 })
                 .then(res => {
