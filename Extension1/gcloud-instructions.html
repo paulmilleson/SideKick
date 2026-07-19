@@ -123,19 +123,25 @@
         <p>To connect the extension to your real live Google Cloud directory, run the updater script locally on your machine terminal using your signed-in Google account:</p>
         
         <div class="step">
-            <div class="step-title">1. Open Terminal</div>
-            <p style="margin-bottom: 0;">Open your powershell or command prompt terminal and navigate to your project directory:</p>
+            <div class="step-title">1. Authenticate with Google Drive</div>
+            <p style="margin-bottom: 0;">Open your powershell or command prompt and run this command to grant Google Drive permissions to your local Google Cloud CLI:</p>
+            <code class="code-block">gcloud auth login --enable-gdrive-access</code>
+        </div>
+
+        <div class="step">
+            <div class="step-title">2. Navigate to Project Directory</div>
+            <p style="margin-bottom: 0;">In your terminal, navigate to the project directory:</p>
             <code class="code-block">cd c:\Users\owner\Documents\Extension1\Extension1</code>
         </div>
 
         <div class="step">
-            <div class="step-title">2. Run Updater Script</div>
+            <div class="step-title">3. Run Updater Script</div>
             <p style="margin-bottom: 0;">Execute the token builder script to write your live credentials to the local files:</p>
             <code class="code-block">powershell -ExecutionPolicy Bypass -File .\update-gcloud-token.ps1</code>
         </div>
 
         <div class="step">
-            <div class="step-title">3. Reload Extension</div>
+            <div class="step-title">4. Reload Extension</div>
             <p style="margin-bottom: 0;">Go to <code>chrome://extensions/</code> in Chrome, click <strong>Reload</strong> on SideKick, and open the Google Drive window to view real documents!</p>
         </div>
 

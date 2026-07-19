@@ -2616,29 +2616,7 @@ let mockDriveFiles = [
 ];
 
 notesRoot.getElementById('btn-google-drive-trigger').addEventListener('click', () => {
-    if (!currentGoogleEmail) {
-        notesRoot.getElementById('signin-modal-overlay').style.display = 'flex';
-        return;
-    }
-    
-    if (currentGoogleToken) {
-        notesRoot.getElementById('drive-email-val').innerText = currentGoogleEmail;
-        fetchRealGoogleDriveFiles(currentGoogleToken, currentGoogleEmail);
-        return;
-    }
-    
-    if (typeof chrome !== 'undefined' && chrome.identity) {
-        chrome.identity.getAuthToken({ interactive: true }, function(token) {
-            if (chrome.runtime.lastError || !token) {
-                openSimulatedDriveModal();
-            } else {
-                notesRoot.getElementById('drive-email-val').innerText = currentGoogleEmail;
-                fetchRealGoogleDriveFiles(token, currentGoogleEmail);
-            }
-        });
-    } else {
-        openSimulatedDriveModal();
-    }
+    connectToGoogleDrive();
 });
 
 notesRoot.getElementById('btn-signin-submit').addEventListener('click', () => {
@@ -2728,6 +2706,137 @@ function openSimulatedDriveModal() {
     });
 }
 
+function showAccountMismatchModal(browserEmail, targetEmail) {
+    let modal = notesRoot.getElementById('account-mismatch-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'account-mismatch-modal';
+        Object.assign(modal.style, {
+            position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
+            background: 'rgba(0,0,0,0.6)', zIndex: '100000', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)'
+        });
+        
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+            background: 'white', padding: '24px', borderRadius: '12px',
+            width: '320px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            fontFamily: 'system-ui, sans-serif', color: '#1e293b'
+        });
+        
+        box.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: #f59e0b;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <h3 style="margin: 0; font-size: 16px;">Account Mismatch</h3>
+            </div>
+            <p style="font-size: 13px; margin: 0 0 16px 0; color: #475569; line-height: 1.5;">
+                You are currently signed into Chrome as <strong id="mismatch-browser-email"></strong>, but this extension expects <strong id="mismatch-target-email"></strong>.
+            </p>
+            <p style="font-size: 13px; margin: 0 0 20px 0; color: #475569; line-height: 1.5;">
+                You may see different files or experience sync issues.
+            </p>
+            <button id="btn-mismatch-dismiss" style="width: 100%; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">I Understand</button>
+        `;
+        
+        modal.appendChild(box);
+        notesRoot.appendChild(modal);
+        
+        notesRoot.getElementById('btn-mismatch-dismiss').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+    
+    notesRoot.getElementById('mismatch-browser-email').innerText = browserEmail;
+    notesRoot.getElementById('mismatch-target-email').innerText = targetEmail;
+    modal.style.display = 'flex';
+}
+
+async function connectToGoogleDrive() {
+    let token = currentGoogleToken;
+    let email = currentGoogleEmail;
+    
+    // 1. Check account mismatch
+    if (typeof chrome !== 'undefined' && chrome.identity && chrome.identity.getProfileUserInfo) {
+        try {
+            const userInfo = await new Promise(resolve => chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, resolve));
+            if (userInfo && userInfo.email) {
+                const browserEmail = userInfo.email.toLowerCase();
+                const targetEmail = 'paul.milleson@gmail.com';
+                const tokenEmail = (email || '').toLowerCase();
+                
+                if (browserEmail !== targetEmail && browserEmail !== tokenEmail) {
+                    console.warn(`[Drive Auth] Account mismatch! Browser: ${browserEmail}, Target: ${targetEmail}`);
+                    showAccountMismatchModal(browserEmail, targetEmail);
+                }
+            }
+        } catch(e) { console.error("Error checking profile user info:", e); }
+    }
+    
+    // 2. Try current token
+    if (token) {
+        try {
+            await fetchRealGoogleDriveFiles(token, email);
+            notesRoot.getElementById('drive-email-val').innerText = email;
+            return;
+        } catch (err) {
+            console.warn("[Drive Auth] Token failed, falling back...", err.message);
+        }
+    }
+    
+    // 3. Silent fallback via chrome.identity
+    if (typeof chrome !== 'undefined' && chrome.identity) {
+        try {
+            token = await new Promise((resolve, reject) => {
+                chrome.identity.getAuthToken({ interactive: false }, (t) => {
+                    if (chrome.runtime.lastError || !t) reject(new Error(chrome.runtime.lastError ? chrome.runtime.lastError.message : "No token"));
+                    else resolve(t);
+                });
+            });
+            
+            email = await new Promise(resolve => {
+                chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, info => {
+                    resolve(info && info.email ? info.email : 'owner@gmail.com');
+                });
+            });
+            
+            await fetchRealGoogleDriveFiles(token, email);
+            currentGoogleToken = token;
+            currentGoogleEmail = email;
+            notesRoot.getElementById('drive-email-val').innerText = email;
+            return;
+        } catch (err) {
+            console.warn("[Drive Auth] Silent fallback failed:", err.message);
+        }
+        
+        // 4. Interactive fallback via chrome.identity
+        try {
+            token = await new Promise((resolve, reject) => {
+                chrome.identity.getAuthToken({ interactive: true }, (t) => {
+                    if (chrome.runtime.lastError || !t) reject(new Error(chrome.runtime.lastError ? chrome.runtime.lastError.message : "No token"));
+                    else resolve(t);
+                });
+            });
+            
+            email = await new Promise(resolve => {
+                chrome.identity.getProfileUserInfo({ accountStatus: 'ANY' }, info => {
+                    resolve(info && info.email ? info.email : 'owner@gmail.com');
+                });
+            });
+            
+            await fetchRealGoogleDriveFiles(token, email);
+            currentGoogleToken = token;
+            currentGoogleEmail = email;
+            notesRoot.getElementById('drive-email-val').innerText = email;
+            return;
+        } catch (err) {
+            console.warn("[Drive Auth] Interactive fallback failed:", err.message);
+        }
+    }
+    
+    // 5. Simulated fallback
+    openSimulatedDriveModal();
+}
+
 function fetchViaBackground(url, options = {}) {
     return new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
@@ -2770,7 +2879,7 @@ function fetchRealGoogleDriveFiles(token, email) {
     const listContainer = notesRoot.getElementById('drive-file-list');
     listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #64748b;">Loading files from Google Drive...</div>';
     
-    fetchViaBackground('https://www.googleapis.com/drive/v3/files?q=trashed%3Dfalse&fields=files(id%2Cname%2CmimeType)', {
+    return fetchViaBackground('https://www.googleapis.com/drive/v3/files?q=trashed%3Dfalse&fields=files(id%2Cname%2CmimeType)', {
         headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(r => {
@@ -2860,12 +2969,8 @@ function fetchRealGoogleDriveFiles(token, email) {
         });
     })
     .catch(err => {
-        if (err.message === "UNAUTHORIZED") {
-            handleAuthFailure();
-        } else {
-            listContainer.innerHTML = '<div style="font-size: 11px; text-align: center; color: #ef4444;">Failed to connect to Google Drive API. Using simulated fallback...</div>';
-            setTimeout(openSimulatedDriveModal, 1500);
-        }
+        listContainer.innerHTML = `<div style="font-size: 11px; text-align: center; color: #ef4444;">Error: ${err.message}</div>`;
+        throw err;
     });
 }
 
