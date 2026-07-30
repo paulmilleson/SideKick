@@ -495,7 +495,10 @@ urlsRoot.innerHTML = `
 <style>
     :host { display:block; width:100%; height:100%; background:#f8fafc; color:#1e293b; font-family: Verdana, sans-serif; box-sizing: border-box; position: relative; }
     * { box-sizing: inherit; }
-    .header { padding: 10px; display: flex; justify-content: flex-end; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+    .header { padding: 10px; display: flex; justify-content: space-between; align-items: center; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .btn-close-app { background: #2563eb; color: white; font-size: 12px; font-weight: bold; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+    .btn-close-app:hover { background: #1d4ed8; }
     .header label { font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: calc(100% - 41px); }
     .quadrant { padding: 10px; display: flex; flex-direction: column; overflow-y: auto; }
@@ -731,17 +734,65 @@ urlsRoot.innerHTML = `
     .small-box-mode .btn-color-picker {
         font-size: 8px !important;
     }
+    
+    /* Split Dialog styles */
+    .split-dialog-overlay {
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 23, 42, 0.6);
+        display: none; justify-content: center; align-items: center;
+        z-index: 100001; backdrop-filter: blur(2px);
+    }
+    .split-dialog {
+        background: white; border-radius: 12px; padding: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3); width: 300px;
+        font-family: Verdana, sans-serif;
+    }
+    .split-dialog h3 { margin-top: 0; font-size: 14px; color: #1e293b; margin-bottom: 16px; }
+    .split-dialog label { display: block; font-size: 11px; margin-bottom: 12px; font-weight: bold; color: #475569; }
+    .split-dialog input[type="text"] {
+        width: 100%; padding: 6px; margin-top: 4px;
+        border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; box-sizing: border-box;
+    }
+    .split-dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    .split-dialog-buttons button {
+        padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11px;
+    }
+    .btn-cancel { background: #e2e8f0; color: #475569; }
+    .btn-confirm { background: #2563eb; color: white; }
+    
+    .btn-split {
+        background: transparent; border: none; cursor: pointer; font-size: 12px;
+        display: none; padding: 0 4px; margin-left: auto;
+    }
+    .edit-mode .btn-split { display: inline-block; }
+    
+    /* Split container inside quadrant */
+    .split-container { display: flex; width: 100%; height: 100%; gap: 10px; }
+    .split-horizontal { flex-direction: column; }
+    .split-vertical { flex-direction: row; }
+    .split-horizontal > .split-panel:first-child { border-bottom: 1px solid black; }
+    .split-vertical > .split-panel:first-child { border-right: 1px solid black; }
+    .split-panel { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
 </style>
 <div class="header">
-    <label>
-        <input type="checkbox" id="mode-toggle"> Edit Mode
-    </label>
-    <label style="margin-left: 15px;">
-        <input type="checkbox" id="drag-toggle"> Drag Mode
-    </label>
-    <label style="margin-left: 15px;">
-        <input type="checkbox" id="small-box-toggle"> Small Box Mode
-    </label>
+    <div class="header-left">
+        <label>
+            <input type="checkbox" id="mode-toggle"> Edit Mode
+        </label>
+        <label>
+            <input type="checkbox" id="drag-toggle"> Drag Mode
+        </label>
+        <label>
+            <input type="checkbox" id="small-box-toggle"> Small Box Mode
+        </label>
+        <label>
+            <input type="checkbox" id="combine-toggle"> Combine Panels
+        </label>
+    </div>
+    <button class="btn-close-app" id="btn-close-urls">Close</button>
+</div>
+<div id="combine-instructions" style="display:none; color: #10b981; font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 10px;">
+    Click on the titles of the Panels that you want to combine (that were originally 1 panel that was split)
 </div>
 <div class="grid">
     <div class="quadrant q-daily">
@@ -816,9 +867,49 @@ urlsRoot.innerHTML = `
         <button class="btn-popover" id="btn-reset-cell" style="width: 100%;">Reset Colors</button>
     </div>
 </div>
+
+<!-- Split Panel Dialog -->
+<div class="split-dialog-overlay" id="split-dialog-overlay">
+    <div class="split-dialog">
+        <h3>Split Panel</h3>
+        <label id="split-checkbox-container" style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="split-horizontal-checkbox">
+            Split horizontally (instead of vertically)
+        </label>
+        <p id="split-forced-text" style="display:none; font-size:11px; font-weight:bold; margin-top:0; margin-bottom:10px; color:#475569;"></p>
+        <label>
+            Side A Label:
+            <input type="text" id="split-side-a-label" placeholder="Side A">
+        </label>
+        <label>
+            Side B Label:
+            <input type="text" id="split-side-b-label" placeholder="Side B">
+        </label>
+        <div class="split-dialog-buttons">
+            <button class="btn-cancel" id="btn-split-cancel">Cancel</button>
+            <button class="btn-confirm" id="btn-split-confirm">Confirm Split</button>
+        </div>
+        </div>
+    </div>
+</div>
+
+<!-- Combine Panel Dialog -->
+<div class="split-dialog-overlay" id="combine-dialog-overlay" style="display:none;">
+    <div class="split-dialog">
+        <h3>Combine Panels</h3>
+        <p id="combine-dialog-text" style="font-size: 13px; color: #475569; margin-bottom: 15px;">
+            Are you sure you want to combine these panels?
+        </p>
+        <div class="split-dialog-buttons">
+            <button class="btn-cancel" id="btn-combine-cancel">Cancel</button>
+            <button class="btn-confirm" id="btn-combine-confirm">Combine</button>
+        </div>
+    </div>
+</div>
 `;
 
 let myUrlsData = {
+    splits: {},
     titles: {
         Daily: { text: 'Daily', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' },
         Media: { text: 'Media', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' },
@@ -834,6 +925,9 @@ let myUrlsData = {
 let isEditMode = false;
 let isDragMode = false;
 let isSmallBoxMode = false;
+let isCombineMode = false;
+let combineSelection1 = null;
+let combineSelection2 = null;
 
 function saveUrls() {
     chrome.storage.local.set({ myUrlsData });
@@ -3482,62 +3576,510 @@ popover.addEventListener('click', (e) => {
     e.stopPropagation();
 });
 
-function renderUrls() {
-    const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
+let currentSplitQuad = null;
+let currentForcedSplitType = null;
+const splitDialogOverlay = urlsRoot.getElementById('split-dialog-overlay');
+const btnSplitCancel = urlsRoot.getElementById('btn-split-cancel');
+const btnSplitConfirm = urlsRoot.getElementById('btn-split-confirm');
+const chkSplitHorizontal = urlsRoot.getElementById('split-horizontal-checkbox');
+const chkContainer = urlsRoot.getElementById('split-checkbox-container');
+const txtForced = urlsRoot.getElementById('split-forced-text');
+const txtSideA = urlsRoot.getElementById('split-side-a-label');
+const txtSideB = urlsRoot.getElementById('split-side-b-label');
 
-    quadrants.forEach(quad => {
-        const titleEl = urlsRoot.getElementById('title-' + quad);
-        if (titleEl) {
-            titleEl.innerHTML = '';
-            const tData = myUrlsData.titles[quad];
+function openSplitDialog(quad) {
+    currentSplitQuad = quad;
+    currentForcedSplitType = null;
+    chkSplitHorizontal.checked = false;
+    
+    const depth = (quad.match(/_/g) || []).length;
+    if (depth === 0) {
+        chkContainer.style.display = 'flex';
+        txtForced.style.display = 'none';
+    } else {
+        const parentQuad = quad.substring(0, quad.lastIndexOf('_'));
+        const parentType = myUrlsData.splits[parentQuad].type;
+        currentForcedSplitType = parentType === 'vertical' ? 'horizontal' : 'vertical';
+        
+        chkContainer.style.display = 'none';
+        txtForced.style.display = 'block';
+        txtForced.innerText = `This will be a ${currentForcedSplitType} split`;
+    }
+    
+    txtSideA.value = myUrlsData.titles[quad].text + ' A';
+    txtSideB.value = myUrlsData.titles[quad].text + ' B';
+    splitDialogOverlay.style.display = 'flex';
+}
+
+btnSplitCancel.addEventListener('click', () => {
+    splitDialogOverlay.style.display = 'none';
+    currentSplitQuad = null;
+});
+
+btnSplitConfirm.addEventListener('click', () => {
+    if (!currentSplitQuad) return;
+    
+    const quad = currentSplitQuad;
+    let isHoriz = chkSplitHorizontal.checked;
+    if (currentForcedSplitType) {
+        isHoriz = (currentForcedSplitType === 'horizontal');
+    }
+    const quadA = quad + '_A';
+    const quadB = quad + '_B';
+    
+    if (!myUrlsData.splits) myUrlsData.splits = {};
+    myUrlsData.titles[quadA] = { text: txtSideA.value || 'Side A', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' };
+    myUrlsData.titles[quadB] = { text: txtSideB.value || 'Side B', bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' };
+    
+    myUrlsData[quadA] = ensure20Cells([]);
+    myUrlsData[quadB] = ensure20Cells([]);
+    
+    for (let i = 0; i < 20; i++) {
+        const item = myUrlsData[quad][i];
+        if (item && (item.name || item.url)) {
+            if (i < 10) {
+                myUrlsData[quadA][i] = { ...item };
+            } else {
+                myUrlsData[quadB][i - 10] = { ...item };
+            }
+        }
+    }
+    
+    myUrlsData.splits[quad] = {
+        type: isHoriz ? 'horizontal' : 'vertical',
+        sideA: quadA,
+        sideB: quadB
+    };
+    
+    saveUrls();
+    renderUrls();
+    
+    splitDialogOverlay.style.display = 'none';
+    currentSplitQuad = null;
+});
+
+const combineDialogOverlay = urlsRoot.getElementById('combine-dialog-overlay');
+const btnCombineCancel = urlsRoot.getElementById('btn-combine-cancel');
+const btnCombineConfirm = urlsRoot.getElementById('btn-combine-confirm');
+
+function tryCombine() {
+    if (!combineSelection1 || !combineSelection2) return;
+    
+    const getParent = (q) => q.substring(0, q.lastIndexOf('_'));
+    const p1 = getParent(combineSelection1);
+    const p2 = getParent(combineSelection2);
+    
+    if (!p1 || p1 !== p2) {
+        alert("You have attempted to combine 2 panels that were not the result of a former panel being split.  Please try your selection again.");
+        combineSelection1 = null;
+        combineSelection2 = null;
+        renderUrls();
+        return;
+    }
+    
+    const countUrls = (q) => myUrlsData[q].filter(i => i && (i.name || i.url)).length;
+    const c1 = countUrls(combineSelection1);
+    const c2 = countUrls(combineSelection2);
+    
+    if (c1 + c2 > 20) {
+        const excess = (c1 + c2) - 20;
+        alert(`This Merge cannot be completed due to an excess of ${excess} URLs.\nYou must first move these extra URLs to another panel, before I can complete the merge.`);
+        combineSelection1 = null;
+        combineSelection2 = null;
+        renderUrls();
+        return;
+    }
+    
+    combineDialogOverlay.style.display = 'flex';
+}
+
+btnCombineCancel.addEventListener('click', () => {
+    combineDialogOverlay.style.display = 'none';
+    combineSelection1 = null;
+    combineSelection2 = null;
+    renderUrls();
+});
+
+btnCombineConfirm.addEventListener('click', () => {
+    if (!combineSelection1) return;
+    const parentQuad = combineSelection1.substring(0, combineSelection1.lastIndexOf('_'));
+    const sideAQuad = parentQuad + '_A';
+    const sideBQuad = parentQuad + '_B';
+    
+    const newParentData = ensure20Cells([]);
+    const leftoverItems = [];
+    
+    for (let i = 0; i < 20; i++) {
+        const itemA = myUrlsData[sideAQuad][i];
+        if (itemA && (itemA.name || itemA.url)) {
+            if (i < 10) newParentData[i] = { ...itemA };
+            else leftoverItems.push({ ...itemA });
+        }
+        
+        const itemB = myUrlsData[sideBQuad][i];
+        if (itemB && (itemB.name || itemB.url)) {
+            if (i < 10) newParentData[i + 10] = { ...itemB };
+            else leftoverItems.push({ ...itemB });
+        }
+    }
+    
+    for (let i = 0; i < 20 && leftoverItems.length > 0; i++) {
+        if (!newParentData[i].name && !newParentData[i].url) {
+            newParentData[i] = leftoverItems.shift();
+        }
+    }
+    
+    delete myUrlsData.splits[parentQuad];
+    myUrlsData[parentQuad] = newParentData;
+    
+    delete myUrlsData[sideAQuad];
+    delete myUrlsData[sideBQuad];
+    delete myUrlsData.titles[sideAQuad];
+    delete myUrlsData.titles[sideBQuad];
+    
+    combineDialogOverlay.style.display = 'none';
+    combineSelection1 = null;
+    combineSelection2 = null;
+    saveUrls();
+    renderUrls();
+});
+
+function renderSubPanel(subQuad, container, isTopLevel = false) {
+    const titleEl = document.createElement('h2');
+    titleEl.className = 'title';
+    titleEl.id = 'title-' + subQuad;
+    
+    const tData = myUrlsData.titles[subQuad] || { text: subQuad, bgColor: '', fgColor: '', fontWeight: 'bold', fontFamily: 'Verdana, sans-serif', fontSize: '12px' };
+    titleEl.style.backgroundColor = tData.bgColor || '';
+    titleEl.style.color = tData.fgColor || '#475569';
+    titleEl.style.fontWeight = tData.fontWeight || 'bold';
+    titleEl.style.fontFamily = tData.fontFamily || 'Verdana, sans-serif';
+    titleEl.style.fontSize = tData.fontSize || '12px';
+    titleEl.style.borderRadius = tData.bgColor ? '4px' : '';
+    titleEl.style.padding = tData.bgColor ? '4px' : '0';
+
+    if (isEditMode) {
+        titleEl.style.backgroundColor = '';
+        titleEl.style.color = '';
+        titleEl.style.fontWeight = 'normal';
+        titleEl.style.padding = '0';
+        titleEl.style.borderRadius = '';
+
+        const tContainer = document.createElement('div');
+        tContainer.style.display = 'flex';
+        tContainer.style.alignItems = 'center';
+        tContainer.style.gap = '4px';
+        tContainer.style.width = '100%';
+        tContainer.style.position = 'relative';
+
+        const input = document.createElement('input');
+        input.className = 'title-input';
+        input.value = tData.text;
+        input.style.backgroundColor = tData.bgColor || 'white';
+        input.style.color = tData.fgColor || '#475569';
+        input.style.fontWeight = tData.fontWeight || 'bold';
+        input.style.fontFamily = tData.fontFamily || 'Verdana, sans-serif';
+        input.style.fontSize = tData.fontSize || '12px';
+
+        input.addEventListener('input', (e) => {
+            if (!myUrlsData.titles[subQuad]) myUrlsData.titles[subQuad] = {};
+            myUrlsData.titles[subQuad].text = e.target.value;
+            saveUrls();
+        });
+
+        const pickerBtn = document.createElement('button');
+        pickerBtn.className = 'btn-color-picker';
+        pickerBtn.style.position = 'static';
+        pickerBtn.style.transform = 'none';
+        pickerBtn.innerText = '🎨';
+        pickerBtn.title = 'Format Title';
+        pickerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            activePopoverCell = { quad: subQuad, isTitle: true };
             
-            // Apply styles to titleEl
-            titleEl.style.backgroundColor = tData.bgColor || '';
-            titleEl.style.color = tData.fgColor || '#475569';
-            titleEl.style.fontWeight = tData.fontWeight || 'bold';
-            titleEl.style.fontFamily = tData.fontFamily || 'Verdana, sans-serif';
-            titleEl.style.fontSize = tData.fontSize || '12px';
-            titleEl.style.borderRadius = tData.bgColor ? '4px' : '';
-            titleEl.style.padding = tData.bgColor ? '4px' : '0';
+            const rect = pickerBtn.getBoundingClientRect();
+            const hostRect = urlsHost.getBoundingClientRect();
+            
+            let topPos = rect.bottom - hostRect.top;
+            let leftPos = rect.left - hostRect.left - 130;
+            
+            if (leftPos < 10) leftPos = 10;
+            const popoverHeight = 420;
+            if (topPos + popoverHeight > hostRect.height) {
+                topPos = hostRect.height - popoverHeight - 10;
+            }
+            if (topPos < 10) topPos = 10;
+            
+            urlsRoot.getElementById('cell-bold-checkbox').checked = tData.fontWeight === 'bold';
+            
+            const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
+            fontFamilySelect.value = tData.fontFamily || 'Verdana, sans-serif';
+            fontFamilySelect.style.fontFamily = fontFamilySelect.value;
+            
+            const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
+            fontSizeSelect.value = tData.fontSize || '12px';
+            fontSizeSelect.style.fontSize = fontSizeSelect.value;
+
+            const textGrid = urlsRoot.getElementById('text-color-grid');
+            const bgGrid = urlsRoot.getElementById('bg-color-grid');
+            textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+            bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
+
+            if (tData.fgColor) {
+                const selText = textGrid.querySelector(`.color-box[data-color="${tData.fgColor.toLowerCase()}"]`);
+                if (selText) selText.classList.add('selected');
+            }
+            if (tData.bgColor) {
+                const selBg = bgGrid.querySelector(`.color-box[data-color="${tData.bgColor.toLowerCase()}"]`);
+                if (selBg) selBg.classList.add('selected');
+            }
+            
+            const popover = urlsRoot.getElementById('color-picker-popover');
+            popover.style.top = `${topPos}px`;
+            popover.style.left = `${leftPos}px`;
+            popover.style.display = 'block';
+        });
+
+        tContainer.appendChild(input);
+        tContainer.appendChild(pickerBtn);
+        
+        titleEl.appendChild(tContainer);
+    } else {
+        titleEl.innerText = tData.text;
+    }
+    
+    const depth = (subQuad.match(/_/g) || []).length;
+    const isSplit = !!(myUrlsData.splits && myUrlsData.splits[subQuad]);
+    
+    if (!isSplit) {
+        if (isCombineMode && depth > 0) {
+            titleEl.style.cursor = 'pointer';
+            if (combineSelection1 === subQuad || combineSelection2 === subQuad) {
+                titleEl.style.boxShadow = '0 0 0 2px #10b981 inset';
+                titleEl.style.backgroundColor = '#ecfdf5';
+            } else {
+                titleEl.style.boxShadow = 'none';
+            }
+            titleEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (combineSelection1 === subQuad) {
+                    combineSelection1 = null;
+                } else if (combineSelection2 === subQuad) {
+                    combineSelection2 = null;
+                } else if (!combineSelection1) {
+                    combineSelection1 = subQuad;
+                } else if (!combineSelection2) {
+                    combineSelection2 = subQuad;
+                    tryCombine();
+                }
+                renderUrls();
+            });
+        }
+        container.appendChild(titleEl);
+    }
+    
+    if (depth < 2 && !isSplit) {
+        const splitLink = document.createElement('a');
+        splitLink.href = '#';
+        splitLink.innerText = 'Split';
+        splitLink.style.position = 'absolute';
+        splitLink.style.top = '4px';
+        splitLink.style.right = '4px';
+        splitLink.style.fontSize = '7px';
+        splitLink.style.color = '#2563eb';
+        splitLink.style.textDecoration = 'underline';
+        splitLink.style.cursor = 'pointer';
+        splitLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openSplitDialog(subQuad);
+        });
+        container.style.position = 'relative';
+        container.appendChild(splitLink);
+    }
+
+    if (isSplit) {
+        const splitData = myUrlsData.splits[subQuad];
+        const splitContainer = document.createElement('div');
+        splitContainer.className = 'split-container split-' + splitData.type;
+        
+        const panelA = document.createElement('div');
+        panelA.className = 'split-panel';
+        renderSubPanel(splitData.sideA, panelA, false);
+        
+        const panelB = document.createElement('div');
+        panelB.className = 'split-panel';
+        renderSubPanel(splitData.sideB, panelB, false);
+        
+        splitContainer.appendChild(panelA);
+        splitContainer.appendChild(panelB);
+        container.appendChild(splitContainer);
+        return;
+    }
+
+    const listDiv = document.createElement('div');
+    listDiv.id = 'list-' + subQuad;
+    
+    const table = document.createElement('table');
+    const classes = [];
+    if (isEditMode) classes.push('edit-mode');
+    else if (isDragMode) classes.push('drag-mode');
+    else classes.push('display-mode');
+    if (isSmallBoxMode) classes.push('small-box-mode');
+    table.className = classes.join(' ');
+
+    const rowsToRender = [];
+    for (let r = 0; r < 10; r++) {
+        const item1 = myUrlsData[subQuad] && myUrlsData[subQuad][r * 2];
+        const item2 = myUrlsData[subQuad] && myUrlsData[subQuad][r * 2 + 1];
+        const hasData = !!((item1 && (item1.name || item1.url)) || (item2 && (item2.name || item2.url)));
+        if (isEditMode || isDragMode || hasData) {
+            rowsToRender.push(r);
+        }
+    }
+
+    const threshold = isSmallBoxMode ? 8 : 6;
+    if (rowsToRender.length > threshold) {
+        container.style.overflowY = 'auto';
+    } else {
+        container.style.overflowY = 'hidden';
+    }
+
+    if (!myUrlsData[subQuad]) {
+        myUrlsData[subQuad] = Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
+    }
+
+    rowsToRender.forEach(r => {
+        const tr = document.createElement('tr');
+        for (let c = 0; c < 2; c++) {
+            const td = document.createElement('td');
+            const cellIndex = r * 2 + c;
+            const item = myUrlsData[subQuad][cellIndex] || { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+
+            if (item.bgColor) td.style.backgroundColor = item.bgColor;
+            if (item.fgColor) td.style.color = item.fgColor;
+            td.style.fontWeight = item.fontWeight || 'normal';
+            td.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
+            td.style.fontSize = item.fontSize || '10px';
+
+            td.setAttribute('data-quad', subQuad);
+            td.setAttribute('data-index', cellIndex.toString());
+
+            if (isDragMode) {
+                if (item.name || item.url) {
+                    td.setAttribute('draggable', 'true');
+                    td.addEventListener('dragstart', (e) => {
+                        td.classList.add('drag-source');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', JSON.stringify({ quad: subQuad, index: cellIndex }));
+                    });
+                    td.addEventListener('dragend', () => {
+                        td.classList.remove('drag-source');
+                        urlsRoot.querySelectorAll('td').forEach(el => {
+                            el.classList.remove('drag-over');
+                            el.classList.remove('drag-source');
+                        });
+                    });
+                }
+
+                td.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    td.classList.add('drag-over');
+                });
+
+                td.addEventListener('dragleave', () => {
+                    td.classList.remove('drag-over');
+                });
+
+                td.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    td.classList.remove('drag-over');
+                    try {
+                        const sourceDataStr = e.dataTransfer.getData('text/plain');
+                        if (sourceDataStr) {
+                            const source = JSON.parse(sourceDataStr);
+                            const sourceQuad = source.quad;
+                            const sourceIndex = parseInt(source.index, 10);
+                            
+                            const itemA = { ...myUrlsData[sourceQuad][sourceIndex] };
+                            const itemB = { ...myUrlsData[subQuad][cellIndex] };
+                            
+                            const isOccupied = (itm) => !!(itm && (itm.name || itm.url));
+                            
+                            if (isOccupied(itemB)) {
+                                const targetEmptyIndices = [];
+                                for (let i = 0; i < 20; i++) {
+                                    if (subQuad === sourceQuad && i === sourceIndex) {
+                                        continue;
+                                    }
+                                    if (!isOccupied(myUrlsData[subQuad][i])) {
+                                        targetEmptyIndices.push(i);
+                                    }
+                                }
+                                
+                                if (targetEmptyIndices.length > 0) {
+                                    const getDistance = (idx1, idx2) => {
+                                        const r1 = Math.floor(idx1 / 2), c1 = idx1 % 2;
+                                        const r2 = Math.floor(idx2 / 2), c2 = idx2 % 2;
+                                        return Math.abs(r1 - r2) + Math.abs(c1 - c2);
+                                    };
+                                    
+                                    targetEmptyIndices.sort((x, y) => getDistance(x, cellIndex) - getDistance(y, cellIndex));
+                                    const closestEmptyIndex = targetEmptyIndices[0];
+                                    
+                                    myUrlsData[subQuad][closestEmptyIndex] = itemB;
+                                    myUrlsData[subQuad][cellIndex] = itemA;
+                                    myUrlsData[sourceQuad][sourceIndex] = { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+                                } else {
+                                    myUrlsData[sourceQuad][sourceIndex] = itemB;
+                                    myUrlsData[subQuad][cellIndex] = itemA;
+                                }
+                            } else {
+                                myUrlsData[subQuad][cellIndex] = itemA;
+                                myUrlsData[sourceQuad][sourceIndex] = { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
+                            }
+
+                            saveUrls();
+                            renderUrls();
+                        }
+                    } catch (err) {
+                        console.error('Drag and drop error:', err);
+                    }
+                });
+            }
 
             if (isEditMode) {
-                // Clear titleEl outer styles in edit mode to avoid duplication with input styling
-                titleEl.style.backgroundColor = '';
-                titleEl.style.color = '';
-                titleEl.style.fontWeight = 'normal';
-                titleEl.style.padding = '0';
-                titleEl.style.borderRadius = '';
-
                 const container = document.createElement('div');
-                container.style.display = 'flex';
-                container.style.alignItems = 'center';
-                container.style.gap = '4px';
-                container.style.width = '100%';
-                container.style.position = 'relative';
+                container.className = 'edit-cell-container';
 
-                const input = document.createElement('input');
-                input.className = 'title-input';
-                input.value = tData.text;
-                input.style.backgroundColor = tData.bgColor || 'white';
-                input.style.color = tData.fgColor || '#475569';
-                input.style.fontWeight = tData.fontWeight || 'bold';
-                input.style.fontFamily = tData.fontFamily || 'Verdana, sans-serif';
-                input.style.fontSize = tData.fontSize || '12px';
+                const nameInput = document.createElement('input');
+                nameInput.className = 'cell-input';
+                nameInput.type = 'text';
+                nameInput.value = item.name;
+                nameInput.placeholder = 'Name';
+                nameInput.addEventListener('input', (e) => {
+                    myUrlsData[subQuad][cellIndex].name = e.target.value;
+                    saveUrls();
+                });
 
-                input.addEventListener('input', (e) => {
-                    myUrlsData.titles[quad].text = e.target.value;
+                const urlInput = document.createElement('input');
+                urlInput.className = 'cell-input';
+                urlInput.type = 'text';
+                urlInput.value = item.url;
+                urlInput.placeholder = 'URL';
+                urlInput.addEventListener('input', (e) => {
+                    myUrlsData[subQuad][cellIndex].url = e.target.value;
                     saveUrls();
                 });
 
                 const pickerBtn = document.createElement('button');
                 pickerBtn.className = 'btn-color-picker';
-                pickerBtn.style.position = 'static';
-                pickerBtn.style.transform = 'none';
                 pickerBtn.innerText = '🎨';
-                pickerBtn.title = 'Format Title';
+                pickerBtn.title = 'Format Cell';
                 pickerBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    activePopoverCell = { quad, isTitle: true };
+                    activePopoverCell = { quad: subQuad, index: cellIndex };
                     
                     const rect = pickerBtn.getBoundingClientRect();
                     const hostRect = urlsHost.getBoundingClientRect();
@@ -3552,296 +4094,94 @@ function renderUrls() {
                     }
                     if (topPos < 10) topPos = 10;
                     
-                    // Sync popup controls with current title state
-                    urlsRoot.getElementById('cell-bold-checkbox').checked = tData.fontWeight === 'bold';
+                    urlsRoot.getElementById('cell-bold-checkbox').checked = item.fontWeight === 'bold';
                     
                     const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
-                    fontFamilySelect.value = tData.fontFamily || 'Verdana, sans-serif';
+                    fontFamilySelect.value = item.fontFamily || 'Verdana, sans-serif';
                     fontFamilySelect.style.fontFamily = fontFamilySelect.value;
                     
                     const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
-                    fontSizeSelect.value = tData.fontSize || '12px';
+                    fontSizeSelect.value = item.fontSize || '10px';
                     fontSizeSelect.style.fontSize = fontSizeSelect.value;
 
-                    // Sync selected outlines in color grids
+                    const textGrid = urlsRoot.getElementById('text-color-grid');
+                    const bgGrid = urlsRoot.getElementById('bg-color-grid');
                     textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
                     bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
 
-                    if (tData.fgColor) {
-                        const selText = textGrid.querySelector(`.color-box[data-color="${tData.fgColor.toLowerCase()}"]`);
+                    if (item.fgColor) {
+                        const selText = textGrid.querySelector(`.color-box[data-color="${item.fgColor.toLowerCase()}"]`);
                         if (selText) selText.classList.add('selected');
                     }
-                    if (tData.bgColor) {
-                        const selBg = bgGrid.querySelector(`.color-box[data-color="${tData.bgColor.toLowerCase()}"]`);
+                    if (item.bgColor) {
+                        const selBg = bgGrid.querySelector(`.color-box[data-color="${item.bgColor.toLowerCase()}"]`);
                         if (selBg) selBg.classList.add('selected');
                     }
                     
+                    const popover = urlsRoot.getElementById('color-picker-popover');
                     popover.style.top = `${topPos}px`;
                     popover.style.left = `${leftPos}px`;
                     popover.style.display = 'block';
                 });
 
-                container.appendChild(input);
+                container.appendChild(nameInput);
+                container.appendChild(urlInput);
                 container.appendChild(pickerBtn);
-                titleEl.appendChild(container);
+                td.appendChild(container);
             } else {
-                titleEl.innerText = tData.text;
+                if (item.name || item.url) {
+                    const link = document.createElement('a');
+                    link.className = 'display-link';
+                    link.href = (item.url && !item.url.startsWith('http')) ? 'https://' + item.url : item.url;
+                    link.target = '_blank';
+                    link.innerText = item.name || item.url;
+                    
+                    link.style.fontWeight = item.fontWeight || 'normal';
+                    link.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
+                    link.style.fontSize = item.fontSize || '10px';
+                    if (item.fgColor) {
+                        link.style.color = item.fgColor;
+                    } else {
+                        link.style.color = '#2563eb';
+                    }
+                    if (isDragMode) {
+                        link.style.pointerEvents = 'none';
+                    }
+                    td.appendChild(link);
+                }
             }
+            tr.appendChild(td);
         }
+        table.appendChild(tr);
+    });
+    listDiv.appendChild(table);
+    container.appendChild(listDiv);
+}
 
-        const listDiv = urlsRoot.getElementById('list-' + quad);
-        listDiv.innerHTML = '';
+function renderUrls() {
+    const quadrants = ['Daily', 'Media', 'Financial', 'Fun'];
 
-        const table = document.createElement('table');
-        const classes = [];
-        if (isEditMode) {
-            classes.push('edit-mode');
-        } else if (isDragMode) {
-            classes.push('drag-mode');
-        } else {
-            classes.push('display-mode');
-        }
-        if (isSmallBoxMode) {
-            classes.push('small-box-mode');
-        }
-        table.className = classes.join(' ');
-
-        // Determine which rows to render based on active data or mode
-        const rowsToRender = [];
-        for (let r = 0; r < 10; r++) {
-            const hasData = !!((myUrlsData[quad][r * 2] && (myUrlsData[quad][r * 2].name || myUrlsData[quad][r * 2].url)) ||
-                               (myUrlsData[quad][r * 2 + 1] && (myUrlsData[quad][r * 2 + 1].name || myUrlsData[quad][r * 2 + 1].url)));
-            if (isEditMode || isDragMode || hasData) {
-                rowsToRender.push(r);
-            }
-        }
-
-        // Configure overflow-y on the quadrant container dynamically
+    quadrants.forEach(quad => {
         const quadEl = urlsRoot.querySelector('.q-' + quad.toLowerCase());
         if (quadEl) {
-            const threshold = isSmallBoxMode ? 8 : 6;
-            if (rowsToRender.length > threshold) {
-                quadEl.style.overflowY = 'auto';
-            } else {
-                quadEl.style.overflowY = 'hidden';
-            }
+            quadEl.innerHTML = '';
+            renderSubPanel(quad, quadEl, true);
         }
-
-        rowsToRender.forEach(r => {
-            const tr = document.createElement('tr');
-            for (let c = 0; c < 2; c++) {
-                const td = document.createElement('td');
-                const cellIndex = r * 2 + c;
-                const item = myUrlsData[quad][cellIndex];
-
-                if (item.bgColor) td.style.backgroundColor = item.bgColor;
-                if (item.fgColor) td.style.color = item.fgColor;
-                td.style.fontWeight = item.fontWeight || 'normal';
-                td.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
-                td.style.fontSize = item.fontSize || '10px';
-
-                td.setAttribute('data-quad', quad);
-                td.setAttribute('data-index', cellIndex.toString());
-
-                if (isDragMode) {
-                    if (item.name || item.url) {
-                        td.setAttribute('draggable', 'true');
-                        td.addEventListener('dragstart', (e) => {
-                            td.classList.add('drag-source');
-                            e.dataTransfer.effectAllowed = 'move';
-                            e.dataTransfer.setData('text/plain', JSON.stringify({ quad, index: cellIndex }));
-                        });
-                        td.addEventListener('dragend', () => {
-                            td.classList.remove('drag-source');
-                            urlsRoot.querySelectorAll('td').forEach(el => {
-                                el.classList.remove('drag-over');
-                                el.classList.remove('drag-source');
-                            });
-                        });
-                    }
-
-                    td.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                        td.classList.add('drag-over');
-                    });
-
-                    td.addEventListener('dragleave', () => {
-                        td.classList.remove('drag-over');
-                    });
-
-                    td.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        td.classList.remove('drag-over');
-                        try {
-                            const sourceDataStr = e.dataTransfer.getData('text/plain');
-                            if (sourceDataStr) {
-                                const source = JSON.parse(sourceDataStr);
-                                const sourceQuad = source.quad;
-                                const sourceIndex = parseInt(source.index, 10);
-                                
-                                const itemA = { ...myUrlsData[sourceQuad][sourceIndex] };
-                                const itemB = { ...myUrlsData[quad][cellIndex] };
-                                
-                                const isOccupied = (itm) => !!(itm.name || itm.url);
-                                
-                                if (isOccupied(itemB)) {
-                                    const targetEmptyIndices = [];
-                                    for (let i = 0; i < 20; i++) {
-                                        if (quad === sourceQuad && i === sourceIndex) {
-                                            continue;
-                                        }
-                                        if (!isOccupied(myUrlsData[quad][i])) {
-                                            targetEmptyIndices.push(i);
-                                        }
-                                    }
-                                    
-                                    if (targetEmptyIndices.length > 0) {
-                                        const getDistance = (idx1, idx2) => {
-                                            const r1 = Math.floor(idx1 / 2), c1 = idx1 % 2;
-                                            const r2 = Math.floor(idx2 / 2), c2 = idx2 % 2;
-                                            return Math.abs(r1 - r2) + Math.abs(c1 - c2);
-                                        };
-                                        
-                                        targetEmptyIndices.sort((x, y) => getDistance(x, cellIndex) - getDistance(y, cellIndex));
-                                        const closestEmptyIndex = targetEmptyIndices[0];
-                                        
-                                        myUrlsData[quad][closestEmptyIndex] = itemB;
-                                        myUrlsData[quad][cellIndex] = itemA;
-                                        myUrlsData[sourceQuad][sourceIndex] = { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
-                                    } else {
-                                        myUrlsData[sourceQuad][sourceIndex] = itemB;
-                                        myUrlsData[quad][cellIndex] = itemA;
-                                    }
-                                } else {
-                                    myUrlsData[quad][cellIndex] = itemA;
-                                    myUrlsData[sourceQuad][sourceIndex] = { name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' };
-                                }
-
-                                saveUrls();
-                                renderUrls();
-                            }
-                        } catch (err) {
-                            console.error('Drag and drop error:', err);
-                        }
-                    });
-                }
-
-                if (isEditMode) {
-                    const container = document.createElement('div');
-                    container.className = 'edit-cell-container';
-
-                    const nameInput = document.createElement('input');
-                    nameInput.className = 'cell-input';
-                    nameInput.type = 'text';
-                    nameInput.value = item.name;
-                    nameInput.placeholder = 'Name';
-                    nameInput.addEventListener('input', (e) => {
-                        myUrlsData[quad][cellIndex].name = e.target.value;
-                        saveUrls();
-                    });
-
-                    const urlInput = document.createElement('input');
-                    urlInput.className = 'cell-input';
-                    urlInput.type = 'text';
-                    urlInput.value = item.url;
-                    urlInput.placeholder = 'URL';
-                    urlInput.addEventListener('input', (e) => {
-                        myUrlsData[quad][cellIndex].url = e.target.value;
-                        saveUrls();
-                    });
-
-                    const pickerBtn = document.createElement('button');
-                    pickerBtn.className = 'btn-color-picker';
-                    pickerBtn.innerText = '🎨';
-                    pickerBtn.title = 'Format Cell';
-                    pickerBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        activePopoverCell = { quad, index: cellIndex };
-                        
-                        const rect = pickerBtn.getBoundingClientRect();
-                        const hostRect = urlsHost.getBoundingClientRect();
-                        
-                        let topPos = rect.bottom - hostRect.top;
-                        let leftPos = rect.left - hostRect.left - 130;
-                        
-                        if (leftPos < 10) leftPos = 10;
-                        const popoverHeight = 420;
-                        if (topPos + popoverHeight > hostRect.height) {
-                            topPos = hostRect.height - popoverHeight - 10;
-                        }
-                        if (topPos < 10) topPos = 10;
-                        
-                        // Sync popup controls with current cell state
-                        urlsRoot.getElementById('cell-bold-checkbox').checked = item.fontWeight === 'bold';
-                        
-                        const fontFamilySelect = urlsRoot.getElementById('cell-font-family');
-                        fontFamilySelect.value = item.fontFamily || 'Verdana, sans-serif';
-                        fontFamilySelect.style.fontFamily = fontFamilySelect.value;
-                        
-                        const fontSizeSelect = urlsRoot.getElementById('cell-font-size');
-                        fontSizeSelect.value = item.fontSize || '10px';
-                        fontSizeSelect.style.fontSize = fontSizeSelect.value;
-
-                        // Sync selected outlines in color grids
-                        textGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
-                        bgGrid.querySelectorAll('.color-box').forEach(box => box.classList.remove('selected'));
-
-                        if (item.fgColor) {
-                            const selText = textGrid.querySelector(`.color-box[data-color="${item.fgColor.toLowerCase()}"]`);
-                            if (selText) selText.classList.add('selected');
-                        }
-                        if (item.bgColor) {
-                            const selBg = bgGrid.querySelector(`.color-box[data-color="${item.bgColor.toLowerCase()}"]`);
-                            if (selBg) selBg.classList.add('selected');
-                        }
-                        
-                        popover.style.top = `${topPos}px`;
-                        popover.style.left = `${leftPos}px`;
-                        popover.style.display = 'block';
-                    });
-
-                    container.appendChild(nameInput);
-                    container.appendChild(urlInput);
-                    container.appendChild(pickerBtn);
-                    td.appendChild(container);
-                } else {
-                    if (item.name || item.url) {
-                        const link = document.createElement('a');
-                        link.className = 'display-link';
-                        link.href = (item.url && !item.url.startsWith('http')) ? 'https://' + item.url : item.url;
-                        link.target = '_blank';
-                        link.innerText = item.name || item.url;
-                        
-                        link.style.fontWeight = item.fontWeight || 'normal';
-                        link.style.fontFamily = item.fontFamily || 'Verdana, sans-serif';
-                        link.style.fontSize = item.fontSize || '10px';
-                        if (item.fgColor) {
-                            link.style.color = item.fgColor;
-                        } else {
-                            link.style.color = '#2563eb';
-                        }
-                        if (isDragMode) {
-                            link.style.pointerEvents = 'none';
-                        }
-                        td.appendChild(link);
-                    }
-                }
-                tr.appendChild(td);
-            }
-            table.appendChild(tr);
-        });
-        listDiv.appendChild(table);
     });
 
     const modeToggle = urlsRoot.getElementById('mode-toggle');
-    modeToggle.checked = isEditMode;
+    if (modeToggle) modeToggle.checked = isEditMode;
     const dragToggle = urlsRoot.getElementById('drag-toggle');
-    dragToggle.checked = isDragMode;
+    if (dragToggle) dragToggle.checked = isDragMode;
     const smallBoxToggle = urlsRoot.getElementById('small-box-toggle');
     if (smallBoxToggle) {
         smallBoxToggle.checked = isSmallBoxMode;
     }
+    const combineToggle = urlsRoot.getElementById('combine-toggle');
+    if (combineToggle) combineToggle.checked = isCombineMode;
+    
+    const combineInst = urlsRoot.getElementById('combine-instructions');
+    if (combineInst) combineInst.style.display = isCombineMode ? 'block' : 'none';
 }
 
 function ensure20Cells(data) {
@@ -3884,19 +4224,27 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
     };
 
     if (result.myUrlsData) {
-        const loadedTitles = result.myUrlsData.titles || {};
         myUrlsData = {
-            titles: {
-                Daily: normalizeTitle(loadedTitles.Daily, 'Daily'),
-                Media: normalizeTitle(loadedTitles.Media, 'Media'),
-                Financial: normalizeTitle(loadedTitles.Financial, 'Financial'),
-                Fun: normalizeTitle(loadedTitles.Fun, 'Fun')
-            },
-            Daily: ensure20Cells(result.myUrlsData.Daily),
-            Media: ensure20Cells(result.myUrlsData.Media),
-            Financial: ensure20Cells(result.myUrlsData.Financial),
-            Fun: ensure20Cells(result.myUrlsData.Fun)
+            splits: result.myUrlsData.splits || {},
+            titles: {}
         };
+        const loadedTitles = result.myUrlsData.titles || {};
+        
+        for (const key of Object.keys(loadedTitles)) {
+            myUrlsData.titles[key] = normalizeTitle(loadedTitles[key], key);
+        }
+        
+        for (const key of Object.keys(result.myUrlsData)) {
+            if (key !== 'titles' && key !== 'splits') {
+                myUrlsData[key] = ensure20Cells(result.myUrlsData[key]);
+            }
+        }
+        
+        const rootQuads = ['Daily', 'Media', 'Financial', 'Fun'];
+        rootQuads.forEach(quad => {
+            if (!myUrlsData.titles[quad]) myUrlsData.titles[quad] = normalizeTitle(null, quad);
+            if (!myUrlsData[quad]) myUrlsData[quad] = ensure20Cells([]);
+        });
     } else {
         const initQuad = () => Array.from({ length: 20 }, () => ({ name: '', url: '', bgColor: '', fgColor: '', fontWeight: 'normal', fontFamily: 'Verdana, sans-serif', fontSize: '10px' }));
         myUrlsData = {
@@ -3924,6 +4272,7 @@ chrome.storage.local.get(['myUrlsData'], (result) => {
 const modeToggle = urlsRoot.getElementById('mode-toggle');
 const dragToggle = urlsRoot.getElementById('drag-toggle');
 const smallBoxToggle = urlsRoot.getElementById('small-box-toggle');
+const combineToggle = urlsRoot.getElementById('combine-toggle');
 
 modeToggle.addEventListener('change', (e) => {
     isEditMode = e.target.checked;
@@ -3946,6 +4295,17 @@ dragToggle.addEventListener('change', (e) => {
 smallBoxToggle.addEventListener('change', (e) => {
     isSmallBoxMode = e.target.checked;
     renderUrls();
+});
+
+combineToggle.addEventListener('change', (e) => {
+    isCombineMode = e.target.checked;
+    combineSelection1 = null;
+    combineSelection2 = null;
+    renderUrls();
+});
+
+urlsRoot.getElementById('btn-close-urls').addEventListener('click', () => {
+    urlsHost.style.display = 'none';
 });
 
 document.body.appendChild(floatingButton);
