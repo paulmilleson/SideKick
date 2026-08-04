@@ -69,7 +69,7 @@ function repositionButtonAndPanels(left, top) {
     // urlsHost: width 768px, height 576px
     const hostsConfig = [
         { el: navPanel, width: 200, height: 250 },
-        { el: calcHost, width: 320, height: 480 },
+        { el: calcHost, width: 880, height: 480 },
         { el: tetrisHost, width: 480, height: 820 },
         { el: urlsHost, width: 768, height: 576 },
         { el: notesHost, width: 768, height: 576 }
@@ -115,7 +115,7 @@ Object.assign(calcHost.style, {
     position: 'fixed',
     bottom: '90px',
     right: '20px',
-    width: '320px',
+    width: '880px',
     height: '480px',
     zIndex: '2147483647',
     display: 'none',
@@ -125,12 +125,9 @@ Object.assign(calcHost.style, {
     backgroundColor: '#0f172a'
 });
 
-const shadowRoot = calcHost.attachShadow({ mode: 'open' });
-
-// Calculator UI
-shadowRoot.innerHTML = `
+calcHost.innerHTML = `
   <style>
-    :host {
+    .calc-host-inner {
       display: block;
       width: 100%;
       height: 100%;
@@ -140,7 +137,8 @@ shadowRoot.innerHTML = `
       box-sizing: border-box;
     }
     * { box-sizing: inherit; }
-    .calculator { display: flex; flex-direction: column; height: 100%; }
+    .calc-container { display: flex; flex-direction: row; width: 100%; height: 100%; }
+    .calculator { display: flex; flex-direction: column; width: 320px; flex-shrink: 0; height: 100%; border-right: 1px solid #334155; }
     .display { background-color: #1e293b; padding: 24px 20px; text-align: right; min-height: 100px; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     .history { font-size: 14px; color: #94a3b8; min-height: 20px; margin-bottom: 8px; }
     .current { font-size: 40px; font-weight: 600; word-wrap: break-word; line-height: 1.1; margin: 0; }
@@ -157,36 +155,178 @@ shadowRoot.innerHTML = `
     button.equals { background-color: #10b981; }
     button.equals:hover { background-color: #34d399; }
     button.equals:active { background-color: #6ee7b7; }
+
+    /* Memory Bar & Indicator */
+    .memory-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background-color: #334155; border-bottom: 1px solid #334155; }
+    .mem-btn { background-color: #1e293b; color: #38bdf8; font-size: 13px; font-weight: 600; padding: 8px 0; border: none; cursor: pointer; }
+    .mem-btn:hover { background-color: #334155; }
+    .mem-btn:active { background-color: #475569; }
+    .mem-indicator { color: #38bdf8; font-size: 13px; font-weight: bold; }
+
+    /* Paper-Tape Window Styles */
+    .paper-tape-window {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: #1e293b;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .tape-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #334155;
+    }
+    .tape-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f59e0b;
+      margin: 0;
+    }
+    .tape-clear-btn {
+      background: #475569;
+      color: #f8fafc;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+    }
+    .tape-clear-btn:hover { background: #64748b; }
+    .tape-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+    }
+    .tape-row {
+      background-color: #0f172a;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      word-break: break-all;
+      line-height: 1.4;
+    }
+    .tape-row .timestamp {
+      color: #94a3b8;
+    }
+    /* Memory Paper-Tape Window Styles (Light Magenta Theme) */
+    .memory-paper-tape-window {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: #fae8ff;
+      padding: 14px;
+      overflow: hidden;
+      border-left: 1px solid #f0abfc;
+    }
+    .mem-tape-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #f0abfc;
+    }
+    .mem-tape-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #86198f;
+      margin: 0;
+    }
+    .mem-tape-clear-btn {
+      background: #c084fc;
+      color: #ffffff;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+    }
+    .mem-tape-clear-btn:hover { background: #a855f7; }
+    .memory-paper-tape-window .tape-row {
+      background-color: #fdf4ff;
+      border: 1px solid #f0abfc;
+      color: #701a75;
+    }
+    .memory-paper-tape-window .tape-row .timestamp {
+      color: #a21caf;
+    }
+    .memory-paper-tape-window .tape-row .element {
+      color: #4c1d95;
+      font-weight: 600;
+    }
   </style>
-  <div class="calculator">
-    <div class="display">
-      <div class="history" id="history"></div>
-      <div class="current" id="current">0</div>
+  <div class="calc-host-inner">
+  <div class="calc-container">
+    <div class="calculator">
+      <div class="display">
+        <div class="history-container" style="display: flex; justify-content: space-between; align-items: center; min-height: 20px; margin-bottom: 8px;">
+          <span class="mem-indicator" id="mem-indicator" style="visibility: hidden;">M</span>
+          <div class="history" id="history"></div>
+        </div>
+        <div class="current" id="current">0</div>
+      </div>
+      <div class="memory-bar">
+        <button class="mem-btn" data-action="mem-clear">MC</button>
+        <button class="mem-btn" data-action="mem-recall">MR</button>
+        <button class="mem-btn" data-action="mem-add">M+</button>
+        <button class="mem-btn" data-action="mem-subtract">M-</button>
+        <button class="mem-btn" data-action="mem-store">MS</button>
+      </div>
+      <div class="keypad" id="keypad">
+        <button class="special" data-action="clear">C</button>
+        <button class="special" data-action="delete">⌫</button>
+        <button class="special" data-action="toggle-sign">±</button>
+        <button class="operator" data-action="operator" data-val="/">÷</button>
+        
+        <button data-action="number" data-val="7">7</button>
+        <button data-action="number" data-val="8">8</button>
+        <button data-action="number" data-val="9">9</button>
+        <button class="operator" data-action="operator" data-val="*">×</button>
+        
+        <button data-action="number" data-val="4">4</button>
+        <button data-action="number" data-val="5">5</button>
+        <button data-action="number" data-val="6">6</button>
+        <button class="operator" data-action="operator" data-val="-">−</button>
+        
+        <button data-action="number" data-val="1">1</button>
+        <button data-action="number" data-val="2">2</button>
+        <button data-action="number" data-val="3">3</button>
+        <button class="operator" data-action="operator" data-val="+">+</button>
+        
+        <button data-action="number" data-val="0" style="grid-column: span 2;">0</button>
+        <button data-action="decimal" data-val=".">.</button>
+        <button class="equals" data-action="calculate">=</button>
+      </div>
     </div>
-    <div class="keypad" id="keypad">
-      <button class="special" data-action="clear">C</button>
-      <button class="special" data-action="delete">⌫</button>
-      <button class="special" data-action="operator" data-val="%">%</button>
-      <button class="operator" data-action="operator" data-val="/">÷</button>
-      
-      <button data-action="number" data-val="7">7</button>
-      <button data-action="number" data-val="8">8</button>
-      <button data-action="number" data-val="9">9</button>
-      <button class="operator" data-action="operator" data-val="*">×</button>
-      
-      <button data-action="number" data-val="4">4</button>
-      <button data-action="number" data-val="5">5</button>
-      <button data-action="number" data-val="6">6</button>
-      <button class="operator" data-action="operator" data-val="-">−</button>
-      
-      <button data-action="number" data-val="1">1</button>
-      <button data-action="number" data-val="2">2</button>
-      <button data-action="number" data-val="3">3</button>
-      <button class="operator" data-action="operator" data-val="+">+</button>
-      
-      <button data-action="number" data-val="0" style="grid-column: span 2;">0</button>
-      <button data-action="decimal" data-val=".">.</button>
-      <button class="equals" data-action="calculate">=</button>
+
+    <!-- Paper Tape Display Window Next to Calculator -->
+    <div class="paper-tape-window">
+      <div class="tape-header">
+        <h3 class="tape-title">📜 Paper Tape</h3>
+        <button class="tape-clear-btn" id="btn-clear-tape">Clear Tape</button>
+      </div>
+      <div class="tape-list" id="tape-list"></div>
+    </div>
+
+    <!-- Memory Paper Tape Display Window (Light Magenta Theme) -->
+    <div class="memory-paper-tape-window">
+      <div class="mem-tape-header">
+        <h3 class="mem-tape-title">🧠 Memory Tape</h3>
+        <button class="mem-tape-clear-btn" id="btn-clear-mem-tape">Clear Tape</button>
+      </div>
+      <div class="tape-list" id="mem-tape-list"></div>
+    </div>
     </div>
   </div>
 `;
@@ -4380,10 +4520,233 @@ window.addEventListener('resize', () => {
 // Initialize position using top/left coordinates
 repositionButtonAndPanels(currentBtnLeft, currentBtnTop);
 
-// Calculator Logic inside Shadow DOM
-const currentDisplay = shadowRoot.getElementById('current');
-const historyDisplay = shadowRoot.getElementById('history');
-const keypad = shadowRoot.getElementById('keypad');
+// --- PAPER-TAPE DATA STRUCTURE ---
+class PaperTapeItem {
+    static OPERAND = 'OPERAND';
+    static OPERATOR = 'OPERATOR';
+    static EXPRESSION_MARKER = 'EXPRESSION_MARKER';
+    static EXPRESSION = 'EXPRESSION';
+    static RESULT_EXPRESSION = 'RESULT_EXPRESSION';
+
+    constructor(type, payload, timestamp = new Date()) {
+        this.type = type;
+        this.payload = payload;
+        const dateObj = timestamp instanceof Date ? timestamp : new Date(timestamp);
+        this.timestamp = dateObj.toISOString();
+        this.timestampMs = dateObj.getTime();
+    }
+}
+
+class PaperTape {
+    constructor() {
+        this.tape = [];
+    }
+
+    /**
+     * 1. Store a floating-point operand with timestamp
+     * @param {number|string} val 
+     */
+    pushOperand(val) {
+        const num = parseFloat(val);
+        if (isNaN(num)) {
+            throw new TypeError(`Invalid floating-point operand: ${val}`);
+        }
+        const item = new PaperTapeItem(PaperTapeItem.OPERAND, { value: num }, new Date());
+        this.tape.push(item);
+        return item;
+    }
+
+    /**
+     * 2. Store an arithmetic operator with timestamp
+     * @param {string} op 
+     */
+    pushOperator(op) {
+        const validOperators = ['+', '-', '*', '/', '%', '^', '×', '÷', '−'];
+        if (!op || !validOperators.includes(op)) {
+            throw new Error(`Invalid arithmetic operator: ${op}`);
+        }
+        const item = new PaperTapeItem(PaperTapeItem.OPERATOR, { operator: op }, new Date());
+        this.tape.push(item);
+        return item;
+    }
+
+    /**
+     * 3. Store a temporary expression-marker with timestamp
+     * @param {string} marker 
+     */
+    pushMarker(marker = 'MARKER') {
+        const item = new PaperTapeItem(PaperTapeItem.EXPRESSION_MARKER, { marker: String(marker) }, new Date());
+        this.tape.push(item);
+        return item;
+    }
+
+    /**
+     * 4. Store an arithmetic expression with timestamp
+     * @param {string} expr 
+     */
+    pushExpression(expr) {
+        const item = new PaperTapeItem(PaperTapeItem.EXPRESSION, { expression: String(expr) }, new Date());
+        this.tape.push(item);
+        return item;
+    }
+
+    /**
+     * 5. Store an arithmetic expression, an equals sign, and an arithmetic result with timestamp
+     * @param {string} expr 
+     * @param {number|string} result 
+     * @param {string} equalsSign 
+     */
+    pushResultExpression(expr, result, equalsSign = '=') {
+        const numericResult = parseFloat(result);
+        const item = new PaperTapeItem(PaperTapeItem.RESULT_EXPRESSION, {
+            expression: String(expr),
+            equalsSign: String(equalsSign),
+            result: isNaN(numericResult) ? result : numericResult
+        }, new Date());
+        this.tape.push(item);
+        return item;
+    }
+
+    /**
+     * Retrieve all tape items
+     */
+    getTape() {
+        return [...this.tape];
+    }
+
+    /**
+     * Filter items by type
+     * @param {string} type 
+     */
+    getByType(type) {
+        return this.tape.filter(item => item.type === type);
+    }
+
+    /**
+     * Clear all tape items
+     */
+    clear() {
+        this.tape = [];
+    }
+
+    /**
+     * Format paper-tape elements into human-readable strings with timestamps
+     */
+    formatTape() {
+        return this.tape.map((item, idx) => {
+            const timeStr = item.timestamp;
+            switch (item.type) {
+                case PaperTapeItem.OPERAND:
+                    return `[#${idx + 1} @ ${timeStr}] Operand: ${item.payload.value}`;
+                case PaperTapeItem.OPERATOR:
+                    return `[#${idx + 1} @ ${timeStr}] Operator: ${item.payload.operator}`;
+                case PaperTapeItem.EXPRESSION_MARKER:
+                    return `[#${idx + 1} @ ${timeStr}] Marker: <${item.payload.marker}>`;
+                case PaperTapeItem.EXPRESSION:
+                    return `[#${idx + 1} @ ${timeStr}] Expression: ${item.payload.expression}`;
+                case PaperTapeItem.RESULT_EXPRESSION:
+                    return `[#${idx + 1} @ ${timeStr}] Result: ${item.payload.expression} ${item.payload.equalsSign} ${item.payload.result}`;
+                default:
+                    return `[#${idx + 1} @ ${timeStr}] Item: ${JSON.stringify(item.payload)}`;
+            }
+        });
+    }
+
+    toJSON() {
+        return JSON.stringify(this.tape, null, 2);
+    }
+}
+
+// --- CALCULATOR MEMORY DATA STRUCTURE ---
+class CalculatorMemory {
+    constructor() {
+        this.memory = 0;
+    }
+
+    /**
+     * Clear memory register (MC)
+     */
+    clear() {
+        this.memory = 0;
+    }
+
+    /**
+     * Recall memory value (MR)
+     */
+    recall() {
+        return this.memory;
+    }
+
+    /**
+     * Store value in memory (MS)
+     * @param {number|string} val 
+     */
+    store(val) {
+        const num = parseFloat(val);
+        if (!isNaN(num)) {
+            this.memory = num;
+        }
+    }
+
+    /**
+     * Add value to memory (M+)
+     * @param {number|string} val 
+     */
+    add(val) {
+        const num = parseFloat(val);
+        if (!isNaN(num)) {
+            this.memory += num;
+        }
+    }
+
+    /**
+     * Subtract value from memory (M-)
+     * @param {number|string} val 
+     */
+    subtract(val) {
+        const num = parseFloat(val);
+        if (!isNaN(num)) {
+            this.memory -= num;
+        }
+    }
+
+    /**
+     * Check if memory is active (non-zero)
+     */
+    hasValue() {
+        return this.memory !== 0;
+    }
+
+    /**
+     * Get raw value
+     */
+    getValue() {
+        return this.memory;
+    }
+}
+
+// Global PaperTape, MemoryPaperTape, and CalculatorMemory Instances
+const paperTape = new PaperTape();
+paperTape.pushMarker('EXPRESSION_MARKER');
+
+const memoryPaperTape = new PaperTape();
+memoryPaperTape.pushMarker('EXPRESSION_MARKER');
+
+const calcMemory = new CalculatorMemory();
+
+if (typeof window !== 'undefined') {
+    window.PaperTape = PaperTape;
+    window.PaperTapeItem = PaperTapeItem;
+    window.paperTape = paperTape;
+    window.memoryPaperTape = memoryPaperTape;
+    window.CalculatorMemory = CalculatorMemory;
+    window.calcMemory = calcMemory;
+}
+
+// Calculator Logic using Standard DOM on calcHost
+const currentDisplay = calcHost.querySelector('#current');
+const historyDisplay = calcHost.querySelector('#history');
+const keypad = calcHost.querySelector('#keypad');
 
 let currentOperand = '0';
 let previousOperand = '';
@@ -4409,18 +4772,243 @@ function updateDisplay() {
     } else {
         historyDisplay.innerText = '';
     }
+
+    const memIndicator = calcHost.querySelector('#mem-indicator');
+    if (memIndicator) {
+        memIndicator.style.visibility = calcMemory.hasValue() ? 'visible' : 'hidden';
+    }
 }
 
-function clear() { currentOperand = '0'; previousOperand = ''; operation = null; shouldResetScreen = false; }
-function deleteNumber() { if (currentOperand === '0' || shouldResetScreen) { shouldResetScreen = false; return; } currentOperand = currentOperand.toString().slice(0, -1); if (currentOperand === '' || currentOperand === '-') currentOperand = '0'; }
-function appendNumber(number) { if (currentOperand === '0' && number !== '.') { currentOperand = number; return; } if (shouldResetScreen) { currentOperand = number; shouldResetScreen = false; return; } if (number === '.' && currentOperand.includes('.')) return; currentOperand = currentOperand.toString() + number; }
-function chooseOperation(op) { if (currentOperand === '0' && op === '-') { currentOperand = '-'; return; } if (currentOperand === '-' || currentOperand === '') return; if (previousOperand !== '') { calculate(); } operation = op; previousOperand = currentOperand; currentOperand = '0'; }
+function updatePaperTapeDisplay() {
+    const tapeList = calcHost.querySelector('#tape-list');
+    if (!tapeList) return;
+    
+    tapeList.innerHTML = '';
+    
+    paperTape.getTape().forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'tape-row';
+        
+        let elemStr = '';
+        switch (item.type) {
+            case PaperTapeItem.OPERAND:
+                elemStr = `Operand ${item.payload.value}`;
+                break;
+            case PaperTapeItem.OPERATOR:
+                elemStr = `Operator ${item.payload.operator}`;
+                break;
+            case PaperTapeItem.EXPRESSION_MARKER:
+                elemStr = `Marker <${item.payload.marker}>`;
+                break;
+            case PaperTapeItem.EXPRESSION:
+                elemStr = `Expression ${item.payload.expression}`;
+                break;
+            case PaperTapeItem.RESULT_EXPRESSION:
+                elemStr = `${item.payload.expression} ${item.payload.equalsSign} ${item.payload.result}`;
+                break;
+            default:
+                elemStr = JSON.stringify(item.payload);
+                break;
+        }
+        
+        row.innerHTML = `<span class="timestamp">${item.timestamp}</span>: <span class="element">${elemStr}</span>`;
+        tapeList.appendChild(row);
+    });
+    
+    tapeList.scrollTop = tapeList.scrollHeight;
+}
+
+function updateMemoryPaperTapeDisplay() {
+    const memTapeList = calcHost.querySelector('#mem-tape-list');
+    if (!memTapeList) return;
+    
+    memTapeList.innerHTML = '';
+    
+    memoryPaperTape.getTape().forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'tape-row';
+        
+        let elemStr = '';
+        switch (item.type) {
+            case PaperTapeItem.OPERAND:
+                elemStr = `Operand ${item.payload.value}`;
+                break;
+            case PaperTapeItem.OPERATOR:
+                elemStr = `Operator ${item.payload.operator}`;
+                break;
+            case PaperTapeItem.EXPRESSION_MARKER:
+                elemStr = `Marker <${item.payload.marker}>`;
+                break;
+            case PaperTapeItem.EXPRESSION:
+                elemStr = `Expression ${item.payload.expression}`;
+                break;
+            case PaperTapeItem.RESULT_EXPRESSION:
+                elemStr = `${item.payload.expression} ${item.payload.equalsSign} ${item.payload.result}`;
+                break;
+            default:
+                elemStr = JSON.stringify(item.payload);
+                break;
+        }
+        
+        row.innerHTML = `<span class="timestamp">${item.timestamp}</span>: <span class="element">${elemStr}</span>`;
+        memTapeList.appendChild(row);
+    });
+    
+    memTapeList.scrollTop = memTapeList.scrollHeight;
+}
+
+function processEqualsPaperTape(resultValue) {
+    const items = paperTape.getTape();
+    let markerIndex = -1;
+
+    // 1. Find the previous expression-marker (searching backwards)
+    for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].type === PaperTapeItem.EXPRESSION_MARKER) {
+            markerIndex = i;
+            break;
+        }
+    }
+
+    // Collect operands and operators up to previous expression-marker
+    const startIdx = markerIndex >= 0 ? markerIndex + 1 : 0;
+    const collectedItems = items.slice(startIdx);
+
+    const operands = [];
+    const operators = [];
+
+    collectedItems.forEach(item => {
+        if (item.type === PaperTapeItem.OPERAND) {
+            operands.push(item.payload.value);
+        } else if (item.type === PaperTapeItem.OPERATOR) {
+            operators.push(item.payload.operator);
+        }
+    });
+
+    if (operands.length === 0) return;
+
+    // Build current-expression with parentheses noting actual calculation order
+    let currentExpr = String(operands[0]);
+    let calculatedVal = operands[0];
+    const opSymbolMap = { '*': '×', '/': '÷', '-': '−', '+': '+' };
+
+    for (let i = 0; i < operators.length; i++) {
+        const op = operators[i];
+        const sym = opSymbolMap[op] || op;
+        const nextOp = operands[i + 1] !== undefined ? operands[i + 1] : 0;
+        
+        if (i > 0) {
+            currentExpr = `(${currentExpr})`;
+        }
+        currentExpr = `${currentExpr} ${sym} ${nextOp}`.trim();
+
+        switch (op) {
+            case '+': calculatedVal = calculatedVal + nextOp; break;
+            case '-': calculatedVal = calculatedVal - nextOp; break;
+            case '*': calculatedVal = calculatedVal * nextOp; break;
+            case '/': calculatedVal = nextOp === 0 ? 'Error' : calculatedVal / nextOp; break;
+            case '%': calculatedVal = calculatedVal % nextOp; break;
+        }
+    }
+
+    const displayResultStr = calculatedVal === 'Error' ? 'Error' : String(resultValue !== undefined ? resultValue : calculatedVal);
+
+    // 4. Remove collected operators, operands, and previous expression-marker from paper-tape
+    const removeIndex = markerIndex >= 0 ? markerIndex : 0;
+    paperTape.tape.splice(removeIndex);
+
+    // 3. Append current-expression, equal sign, and calculated value to paper-tape
+    paperTape.pushResultExpression(currentExpr, displayResultStr, '=');
+
+    // 5. Append an expression-marker to paper-tape
+    paperTape.pushMarker('EXPRESSION_MARKER');
+
+    // 6. Display paper-tape
+    updatePaperTapeDisplay();
+}
+
+function clear() { 
+    currentOperand = '0'; 
+    previousOperand = ''; 
+    operation = null; 
+    shouldResetScreen = false;
+    paperTape.pushMarker('EXPRESSION_MARKER');
+    updatePaperTapeDisplay();
+}
+
+function deleteNumber() { 
+    if (currentOperand === '0' || shouldResetScreen) { 
+        shouldResetScreen = false; 
+        return; 
+    } 
+    currentOperand = currentOperand.toString().slice(0, -1); 
+    if (currentOperand === '' || currentOperand === '-') currentOperand = '0'; 
+}
+
+function toggleSign() {
+    if (currentOperand === 'Error') return;
+
+    if (currentOperand.startsWith('-')) {
+        currentOperand = currentOperand.substring(1);
+    } else if (currentOperand !== '0' && currentOperand !== '') {
+        currentOperand = '-' + currentOperand;
+    } else if (currentOperand === '0') {
+        currentOperand = '-';
+    }
+
+    // Also change the sign of the corresponding operand as stored in paper-tape if present
+    const tapeItems = paperTape.getTape();
+    for (let i = tapeItems.length - 1; i >= 0; i--) {
+        if (tapeItems[i].type === PaperTapeItem.OPERAND) {
+            tapeItems[i].payload.value = -tapeItems[i].payload.value;
+            break;
+        } else if (tapeItems[i].type === PaperTapeItem.EXPRESSION_MARKER) {
+            break;
+        }
+    }
+
+    updatePaperTapeDisplay();
+}
+
+function appendNumber(number) { 
+    if (currentOperand === '0' && number !== '.') { 
+        currentOperand = number; 
+        return; 
+    } 
+    if (shouldResetScreen) { 
+        currentOperand = number; 
+        shouldResetScreen = false; 
+        return; 
+    } 
+    if (number === '.' && currentOperand.includes('.')) return; 
+    currentOperand = currentOperand.toString() + number; 
+}
+
+function chooseOperation(op) { 
+    if (currentOperand === '0' && op === '-') { 
+        currentOperand = '-'; 
+        return; 
+    } 
+    if (currentOperand === '-' || currentOperand === '') return; 
+    if (previousOperand !== '') { 
+        calculate(); 
+    } 
+    operation = op; 
+    previousOperand = currentOperand; 
+
+    // Append operand and operator entered into calculator to paper-tape
+    paperTape.pushOperand(parseFloat(previousOperand));
+    paperTape.pushOperator(op);
+    updatePaperTapeDisplay();
+
+    currentOperand = '0'; 
+}
 
 function calculate() {
     let result;
     const prev = parseFloat(previousOperand);
     const current = parseFloat(currentOperand);
     if (isNaN(prev) || isNaN(current)) return;
+
     switch (operation) {
         case '+': result = prev + current; break;
         case '-': result = prev - current; break;
@@ -4429,24 +5017,142 @@ function calculate() {
         case '%': result = prev % current; break;
         default: return;
     }
-    currentOperand = result === 'Error' ? 'Error' : result.toString();
-    operation = null; previousOperand = ''; shouldResetScreen = true;
+
+    const calcResult = result === 'Error' ? 'Error' : result.toString();
+
+    // Append final operand to paper-tape
+    paperTape.pushOperand(current);
+
+    // Process equals according to 6-step rule
+    processEqualsPaperTape(calcResult);
+
+    currentOperand = calcResult;
+    operation = null; 
+    previousOperand = ''; 
+    shouldResetScreen = true;
 }
 
-keypad.addEventListener('click', (e) => {
-    if (e.target.tagName !== 'BUTTON') return;
-    if (currentOperand === 'Error' && e.target.dataset.action !== 'clear') clear();
-    const btn = e.target;
-    const action = btn.dataset.action;
-    const val = btn.dataset.val;
+function processMemoryRecallPaperTape() {
+    const memVal = calcMemory.recall();
+    const items = memoryPaperTape.getTape();
+    let markerIndex = -1;
+
+    // 1. Find previous memory-expression-marker (searching backwards)
+    for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].type === PaperTapeItem.EXPRESSION_MARKER) {
+            markerIndex = i;
+            break;
+        }
+    }
+
+    const startIdx = markerIndex >= 0 ? markerIndex + 1 : 0;
+    const collectedItems = items.slice(startIdx);
+
+    const operands = [];
+    const operators = [];
+
+    collectedItems.forEach(item => {
+        if (item.type === PaperTapeItem.OPERAND) {
+            operands.push(item.payload.value);
+        } else if (item.type === PaperTapeItem.OPERATOR) {
+            operators.push(item.payload.operator);
+        }
+    });
+
+    if (operands.length > 0) {
+        // Build memory-current-expression with parentheses noting calculation order
+        let memExpr = String(operands[0]);
+        const opSymbolMap = { '*': '×', '/': '÷', '-': '−', '+': '+' };
+
+        for (let i = 0; i < operators.length; i++) {
+            const op = operators[i];
+            const sym = opSymbolMap[op] || op;
+            const nextOp = operands[i + 1] !== undefined ? operands[i + 1] : '';
+            if (i > 0) {
+                memExpr = `(${memExpr})`;
+            }
+            memExpr = `${memExpr} ${sym} ${nextOp}`.trim();
+        }
+
+        // 4. Remove collected operators, operands, and previous memory-expression-marker
+        const removeIndex = markerIndex >= 0 ? markerIndex : 0;
+        memoryPaperTape.tape.splice(removeIndex);
+
+        // 3. Append memory-current-expression, equals sign, and stored memory value
+        memoryPaperTape.pushResultExpression(memExpr, memVal, '=');
+
+        // 5. Append new memory-expression-marker
+        memoryPaperTape.pushMarker('EXPRESSION_MARKER');
+
+        // 6. Display memory-paper-tape
+        updateMemoryPaperTapeDisplay();
+    }
+
+    // Set calculator screen display to recalled memory value
+    currentOperand = memVal.toString();
+    shouldResetScreen = true;
+}
+
+const btnClearTape = calcHost.querySelector('#btn-clear-tape');
+if (btnClearTape) {
+    btnClearTape.addEventListener('click', () => {
+        paperTape.clear();
+        updatePaperTapeDisplay();
+    });
+}
+
+const btnClearMemTape = calcHost.querySelector('#btn-clear-mem-tape');
+if (btnClearMemTape) {
+    btnClearMemTape.addEventListener('click', () => {
+        memoryPaperTape.clear();
+        updateMemoryPaperTapeDisplay();
+    });
+}
+
+const calculatorEl = calcHost.querySelector('.calculator');
+if (calculatorEl) {
+    calculatorEl.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') return;
+        if (currentOperand === 'Error' && e.target.dataset.action !== 'clear') clear();
+        const btn = e.target;
+        const action = btn.dataset.action;
+        const val = btn.dataset.val;
     if (action === 'number') appendNumber(val);
     else if (action === 'operator') chooseOperation(val);
     else if (action === 'decimal') appendNumber(val);
+    else if (action === 'toggle-sign') toggleSign();
     else if (action === 'clear') clear();
     else if (action === 'delete') deleteNumber();
     else if (action === 'calculate') calculate();
+    else if (action === 'mem-clear') {
+        calcMemory.clear();
+        memoryPaperTape.pushMarker('EXPRESSION_MARKER');
+        updateMemoryPaperTapeDisplay();
+    } else if (action === 'mem-recall') {
+        processMemoryRecallPaperTape();
+    } else if (action === 'mem-store') {
+        const operandVal = parseFloat(currentOperand);
+        calcMemory.store(operandVal);
+        memoryPaperTape.pushOperand(operandVal);
+        updateMemoryPaperTapeDisplay();
+    } else if (action === 'mem-add') {
+        const operandVal = parseFloat(currentOperand);
+        calcMemory.add(operandVal);
+        memoryPaperTape.pushOperand(operandVal);
+        memoryPaperTape.pushOperator('+');
+        shouldResetScreen = true;
+        updateMemoryPaperTapeDisplay();
+    } else if (action === 'mem-subtract') {
+        const operandVal = parseFloat(currentOperand);
+        calcMemory.subtract(operandVal);
+        memoryPaperTape.pushOperand(operandVal);
+        memoryPaperTape.pushOperator('-');
+        shouldResetScreen = true;
+        updateMemoryPaperTapeDisplay();
+    }
     updateDisplay();
-});
+    });
+}
 
 document.addEventListener('keydown', (e) => {
     // Global shortcut: Alt + S or Ctrl + Shift + S to toggle the floating button itself
