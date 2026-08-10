@@ -4983,24 +4983,80 @@ function appendNumber(number) {
     currentOperand = currentOperand.toString() + number; 
 }
 
+function computeRunningResult(prev, curr, op) {
+    const p = parseFloat(prev);
+    const c = parseFloat(curr);
+    if (isNaN(p) || isNaN(c)) return curr;
+    switch (op) {
+        case '+': return (p + c).toString();
+        case '-': return (p - c).toString();
+        case '*': return (p * c).toString();
+        case '/': return c === 0 ? 'Error' : (p / c).toString();
+        case '%': return (p % c).toString();
+        default: return curr;
+    }
+}
+
+/**
+ * JUNIOR DEVELOPER GUIDE - chooseOperation(op)
+ * --------------------------------------------
+ * WHAT THIS FUNCTION DOES:
+ * This function is called whenever the user presses an arithmetic operator button (+, -, *, /, %).
+ * It handles two main responsibilities:
+ *   1. Updating the calculator's internal state (setting the operation, updating running totals,
+ *      and flagging the screen to reset on the next digit typed).
+ *   2. Logging the operand (number) and operator (+, -, *, etc.) onto the paper-tape data structure
+ *      so that the paper tape window updates in real-time.
+ *
+ * HOW CHAINED OPERATIONS WORK (e.g., typing "5 + 3 + 2 ="):
+ * - First Operator ("5 +"):
+ *   We record "5" and "+" onto the paper-tape, store "5" in `previousOperand`, and set `operation = '+'`.
+ * - Second Operator ("3 +"):
+ *   Instead of finalizing the calculation immediately, we compute the intermediate running result
+ *   (5 + 3 = 8) via `computeRunningResult()` so the calculator screen shows "8". Then we push "3"
+ *   and the new operator "+" onto the paper-tape.
+ * - Why don't we finalize the paper-tape yet?
+ *   Keeping all operands (5, 3, 2) and operators (+, +) under the SAME expression marker allows the
+ *   paper tape to format the final equation with parentheses when EQUALS (=) is pressed: ((5 + 3) + 2) = 10.
+ *
+ * PARAMETER:
+ * @param {string} op - The operator string selected by the user ('+', '-', '*', '/', '%').
+ */
 function chooseOperation(op) { 
+    // Edge case: If display is '0' and user types '-', treat it as a negative sign input (e.g., -5)
     if (currentOperand === '0' && op === '-') { 
         currentOperand = '-'; 
         return; 
     } 
-    if (currentOperand === '-' || currentOperand === '') return; 
-    if (previousOperand !== '') { 
-        calculate(); 
-    } 
-    operation = op; 
-    previousOperand = currentOperand; 
+    
+    // Guard clause: Ignore operator click if current input is invalid/incomplete (like a lone '-')
+    if (currentOperand === '-' || currentOperand === '') return;
 
-    // Append operand and operator entered into calculator to paper-tape
-    paperTape.pushOperand(parseFloat(previousOperand));
-    paperTape.pushOperator(op);
+    // Check if we are chaining an operation (e.g., user entered 5 + 3 and just clicked '+' or '*')
+    if (previousOperand !== '' && operation !== null && !shouldResetScreen) { 
+        // 1. Calculate intermediate running result for the calculator screen display
+        const runningRes = computeRunningResult(previousOperand, currentOperand, operation);
+        
+        // 2. Push the current operand (3) and the new operator (+/*) onto the paper tape
+        paperTape.pushOperand(parseFloat(currentOperand));
+        paperTape.pushOperator(op);
+
+        // 3. Update running state variables
+        previousOperand = runningRes;
+        currentOperand = runningRes;
+    } else {
+        // First operator in a new calculation sequence
+        previousOperand = currentOperand;
+        paperTape.pushOperand(parseFloat(previousOperand));
+        paperTape.pushOperator(op);
+    }
+
+    // Store the active operator and signal screen reset for the next number entry
+    operation = op;
+    shouldResetScreen = true;
+    
+    // Refresh the paper tape UI window
     updatePaperTapeDisplay();
-
-    currentOperand = '0'; 
 }
 
 function calculate() {
